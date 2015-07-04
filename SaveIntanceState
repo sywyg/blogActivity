@@ -1,0 +1,100 @@
+名字应该为Activity运行时数据保存
+
+本文参考内容如下:
+
+官方文档
+http://www.cnblogs.com/hanyonglu/archive/2012/03/28/2420515.html 
+威哥视频
+
+
+
+#简介
+Activity的 onSaveInstanceState() 和 onRestoreInstanceState()并不是生命周期方法，它们不同于 onCreate()、onPause()等生命周期方法，它们并不一定会被触发。当Activity实例可能被系统销毁（非用户主动例如按下BACK键）时，该Activity就会回调onSaveInstanceState()保存当前UI状态,当然你也可以在这里保存临时数据。 
+#回调时机
+这里的可能被系统销毁指的是该Activity还未被销毁，而仅仅是一种可能性。那么该Activity何时会回调onSaveInstanceState方法？有下面几种情况： 
+
+1. 按下HOME键时；
+2. 按下电源按键（关闭屏幕）时；
+3. 被另一个Activity实例覆盖时；
+4. 屏幕切换或其它配置变化时。 
+
+而对应的恢复UI状态的onRestoreInstanceState()方法不一定被调用。当Activity确实被系统销毁了才会回调onRestoreInstanceState()方法（重新实例化在onStart()之后）。而如果仅仅是停留在有这种可能性的情况下，则该方法不会被调用。默认情况下屏幕切换时系统会销毁该Activity，因此就会回调onRestoreInstanceState()。
+
+注意:
+
+1. onSaveInstanceState()常常用于保存当前Activity中UI状态数据（临时），避免Activity被系统意外killed的情况下无法恢复之前的状态（恢复可以在onCreate()和onRestoreInstanceState()）。onPause()适合用于数据的持久化保存。
+1. 在`<activity>`标签中设置属性clearTaskOnLaunch和finishOnTaskLaunch为true，并不会回调onRestoreInstanceState()方法;
+2. 屏幕切换时控件需有id才能保存它对应的数据.
+3. 在前三种情况下是怎么恢复UI状态的？？？
+
+#事件处理
+以上四种事件处理步骤如下：
+
+1. 调用onPause()方法暂停当前Activity；
+2. 调用onSaveInstanceState()方法；
+3. 依次调用onStop()，onDestroy()销毁该Activity实例；
+4. 依次调用onCreate(),onStart()重新启动该Activity实例；
+5. 调用onRestoreInstanceState()方法恢复保存的数据；
+6. 调用onResume()启动。
+
+注意: 
+
+1. 前三种情况只会发生步骤1，2(之后调用onStop()...)，6；
+2. onCreate(Bundle)或者onRestoreInstanceState(Bundle)中传入的Bundle参数是由onSaveInstanceState封装好的，因此这个个方法都可以恢复数据；
+3. onSaveInstanceState(Bundle)将数据以Parcelable对象保存在Bundle对象中，系统通过Parcelable对象打包处理。
+4. onSaveInstanceState()默认会自动保存activity中的UI状态数据,几乎所有UI控件都实现了onSaveInstanceState()方法,因此在重写时我们不需要特意再保存UI状态，只需要调用父类方法。需要注意的是控件需要在xml中指定id，否则当Activity真的被系统销毁时若不设置id则不能够保存/恢复控件数据，若Activity没有被销毁则无论是否制定id都会保存/恢复UI状态数据。
+
+
+下面以屏幕切换为例。
+
+#简介
+Android内置了方向感应器的支持，会根据所处的方向自动在竖屏和横屏间切换，在电脑上的模拟器切换快捷键为：ctrl+F11/F12。
+
+##固定屏幕
+
+有时我们的应用程序仅能在横屏 / 竖屏时运行，比如某些游戏，此时我们需要锁定该 Activity 运行时的屏幕方向，则需在AndroidManifest.xml文件中的activity 标签中添加 `android:screenOrientation`属性。该属性有多种取值，常用的两种：portrait（肖像）为竖屏 ,  landscape（风景画） 为横屏。也可以在代码中设置，代码如下：
+
+```java
+@Override
+    protected void onCreate(Bundle savedInstanceState) {
+        super.onCreate(savedInstanceState);
+        //下面是代码设置屏幕显示方式
+  setRequestedOrientation(ActivityInfo.SCREEN_ORIENTATION_PORTRAIT);
+        setContentView(R.layout.activity_main);
+    }
+```
+##以窗口Dialog形式显示Activity
+若要以窗口Dialog形式显示Activity则需在AndroidMainfast.xml文件的activity标签中添加`android:theme`属性。
+
+#其它
+若想要在指定的属性发生变化时不重新启动Activity，则需在AndroidManifest.xml文件的activity标签中添加
+`android:configChanges="screenSize|keyboardHidden|orientation"`（这是设置屏幕切换时不重启）设置，而是调用onConfigurationChanged()方法。
+若要软件在横竖屏之间切换，由于横竖屏的高宽会发生转换，有可能会要求不同的布局。可以通过以下方法来切换布局：
+
+1. layout-land和layout-port
+      在res目录下建立layout-land(横屏的layout)和layout-port(竖屏的layout)目录,相应的layout文件不变，比如main.xml。其他的不用管，模拟器会自动寻找。
+1. onCreate()中判断横竖屏（待验证，，，）
+     通过this.getResources().getConfiguration().orientation判断当前是横屏还是竖屏，然后加载相应的xml布局文件(加载xml应该是系统完成的，我们通过上述方法判断是横屏还是竖屏)。因为当屏幕变为横屏的时候,系统会重新呼叫当前Activity的OnCreate方法,你可以把以下方法放在你的 OnCreate中来检查当前的方向,然后可以让你的SetContentView来载入不同的Layout xml：
+     
+	```java
+	if (this.getResources().getConfiguration().orientation == Configuration.ORIENTATION_LANDSCAPE) { 
+	Log.i("info", "landscape"); 
+	} 
+	else if (this.getResources().getConfiguration().orientation == Configuration.ORIENTATION_PORTRAIT) { 
+	Log.i("info", "portrait");
+	}
+	```
+3. 横竖屏切换用onConfigurationChanged
+        
+(待验证)这种方法缺点是动态适应差。比如横竖屏切换时需要你自己写代码来使用不同的layout等resource，语言设置的动态改变等，不推荐.
+         
+
+#问题（待验证）
+Q:横竖屏生命周期的切换有可能是什么样的？
+
+- 不设置Activity的android:configChanges时，切屏会重新调用各个生命周期，竖屏切换到横屏:(调用一次生命周期)，横屏切换到竖屏：(调用两次生命周期)。
+- 设置Activity的android:configChanges="orientation"时，切屏还是会重新调用各个生命周期，切横、竖屏时只会执行一次。
+- 设置Activity的android:configChanges="orientation|keyboardHidden"时，切屏不会重新调用各个生命周期，只会执行onConfigurationChanged方法。
+
+[^oris]: http://gundumw100.iteye.com/blog/1115080
+
