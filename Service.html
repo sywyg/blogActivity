@@ -860,7 +860,8 @@ body .markdown-body
   float: left;
   margin: 0.3em 0 0.25em -1.6em;
   vertical-align: middle;
-}</style><title>Service</title></head><body><article class="markdown-body"><p>参考文献：</p>
+}</style><title>Service</title></head><body><article class="markdown-body"><p>定义为翻译文章。
+参考文献：</p>
 
 <p>Android 官方文档</p>
 
@@ -909,7 +910,7 @@ body .markdown-body
 
 <p>当一个组件通过<code>bindService()</code>方式创建service时（系统不会调用<code>onStartCommand()</code>），那么只要该组件绑定它，它就一直处于运行状态。一旦service被所有的组件解绑，那么系统就会销毁该service。</p>
 
-<p>系统会在内存不足时强制杀死该service，以保证当前获得焦点的activity能够获得系统资源。若绑定service的activity处于运行状态，则不太可能销毁该service，同时若该service被声明为前台service（run in the foreground，稍后讨论），则它最不可能被杀死。否则，service运行时间越长，被销毁的概率越大（运行时间越长所在后台任务中的位置越低，越容易被销毁）。因此，如果我们需要启动service的话，最好要设置好如何通过系统重新启动该service。如果系统销毁了service，系统通过<code>onStartCommand()</code>方法的返回值判断是否要重新启动该service（关于重启稍后详解）。</p>
+<p>系统会在内存不足时强制杀死该service，以保证当前获得焦点的activity能够获得系统资源。若绑定service的activity处于运行状态，则不太可能销毁该service，同时若该service被声明为前台service（run in the foreground，稍后讨论），则它最不可能被杀死。否则，started service运行时间越长，被销毁的概率越大（运行时间越长所在后台任务中的位置越低，越容易被销毁）。因此，如果我们需要启动service的话，最好要设置好如何通过系统重新启动该service。如果系统销毁了service，系统通过<code>onStartCommand()</code>方法的返回值判断是否要重新启动该service（关于重启稍后详解）。</p>
 
 <p>下面将详细介绍如何创建service（两种），以及如何使用。</p>
 
@@ -1022,10 +1023,100 @@ IntentService会完成以下内容：</p>
     <span class="pl-k">return</span> <span class="pl-v">super</span><span class="pl-k">.</span>onStartCommand(intent,flags,startId);
 }</pre></div>
 
+<p><code>onHandleIntent()和onBind()</code>方法不要调用父类的方法。</p>
+
+<p>下面将介绍如何使用继承Service类实现service，该service适合同时处理多个start请求。</p>
+
+<h3>
+<a id="user-content-继承service类" class="anchor" href="#%E7%BB%A7%E6%89%BFservice%E7%B1%BB" aria-hidden="true"><span class="octicon octicon-link"></span></a>继承Service类</h3>
+
+<p>通过继承Service类实现service可以处理多线程问题。和继承IntentService类不同的是，我们需要自己实现<code>onStartCommand()</code>方法，这样一来我们可以同时处理多线程问题，而不是在工作队列中等待。</p>
+
+<p><code>onStartCommand()</code>方法必须有一个int返回值，该返回值描述了当系统kill该service之后系统应该如何继续使用该service（IntentService中有默认值）。该返回值必须是取一下内容之一：</p>
+
+<ol>
+<li>
+<p>START_NOT_STICKY（值为2）
+设置该值，如果在返回过<code>onStartCommand()</code>方法之后系统杀死了该service，则该Service不会再被系统重建，除非有后续的intents。因此在不需要重新运行service或应用程序能够重新启动该service的情况下，这个返回值是最安全的选择。</p>
+
+<p>这种设置也是有意义的，当一开始启动service时完成一些任务，当内存不足时被杀死，之后我们可以在内存够用的情况下再启动它，继续完成任务。</p>
+</li>
+<li><p>START_STICKY（值为1）
+设置该值，如果在返回过<code>onStartCommand()</code>方法之后系统杀死了该service（此时记录该service为started 状态），则之后系统会尝试重新创建该service并创建之后一定调用<code>onStartCommand()</code>方法,但是不会传递最后一个Intent对象，而是用值为null的Intent对象（因此需要小心判断），除非有后续的intents。
+这种设置适合像媒体播放器之类的service，不需要执行命令，只要独立运行并等待任务。</p></li>
+<li><p>START_REDELIVER_INTENT（值为3）
+设置该值，如果在返回过<code>onStartCommand()</code>方法之后系统杀死了该service，则之后系统会重新创建该service并调用<code>onStartCommand()</code>方法,且该Intent值为最后一次Intent对象。这种适合需要立即执行的任务。</p></li>
+</ol>
+
+<p>每次请求都会执行<code>onStartCommand()</code>方法，然而只要一次stopService()或stopSelf()就能停止。</p>
+
+<h4>
+<a id="user-content-停止一个service" class="anchor" href="#%E5%81%9C%E6%AD%A2%E4%B8%80%E4%B8%AAservice" aria-hidden="true"><span class="octicon octicon-link"></span></a>停止一个service</h4>
+
+<p>显然，这里是指继承Service类。
+started方式启动的service必须管理好自己的生命周期。也就是，除非系统在回收内存，否则service不会自己停止或销毁。因此必须通过<code>stopSelf()</code>或在其它组件中调用<code>StopService()</code>，一旦执行了这两个方法中的一个系统就会尽可能地销毁该service。</p>
+
+<p>在处理多个请求时，若执行完一个请求时调用<code>stopSelf()</code>方法或<code>StopService()</code>的话，后续的请求就就不会再执行，因此，通常调用<code>stopSelf(int)</code>方法,根据ID（<code>onStartCommand()</code>方法中传递的startId），停止指定的一次请求。</p>
+
+<p>注意：当service完成任务时，停止该service（自身或外界）是必要的，这样能够避免浪费资源以及耗电，包括在started之后又绑定的service。</p>
+
+<h1>
+<a id="user-content-管理service生命周期" class="anchor" href="#%E7%AE%A1%E7%90%86service%E7%94%9F%E5%91%BD%E5%91%A8%E6%9C%9F" aria-hidden="true"><span class="octicon octicon-link"></span></a>管理Service生命周期</h1>
+
+<p>由于service是运行在后台的，因此管理service的生命周期需要加倍小心。</p>
+
+<p>有两种方式的service，因此从创建到销毁有两种生命周期：</p>
+
+<ul>
+<li>started service
+对于这种方式的service，当另一个组建调用<code>startService()</code>时，该service被创建，然后该service不受限制的运行，同时我们必须在该service完成任务时停止它。当service被停止时，系统就会销毁它。</li>
+<li>bound service
+对于这种方式的service，当另一个组建调用<code>bindService()</code>时，该service被创建客户端通过IBinder接口和该service通信。客户端可以通过<code>unBindService()</code>解除绑定。多个客户端可以绑定同一个service，当所有的客户端都解绑时，系统自动销毁该service，不用客户端销毁。</li>
+</ul>
+
+<p>当然这两种方式不是绝对分开的。我们可以先启动一个service然后再进行绑定。这种情况下调用<code>stopSelf()</code>方法或<code>StopService()</code>方法只有在所有组建都解绑该service时才会停止该service。</p>
+
+<h2>
+<a id="user-content-实现周期方法" class="anchor" href="#%E5%AE%9E%E7%8E%B0%E5%91%A8%E6%9C%9F%E6%96%B9%E6%B3%95" aria-hidden="true"><span class="octicon octicon-link"></span></a>实现周期方法</h2>
+
+<p>同activity一样，我们可以实现生命周期回调方法来监控service状态的改变，以到达在合适的时间做合适的事。</p>
+
+<p>如下图。左边部分描述的是通过<code>startService()</code>方法启动的service的生命周期，右边部分是通过<code>bindService()</code>方法绑定的service的生命周期。</p>
+
+<p>图：：：：：：：：：：：：：：：：
+：：：：：：：：：：：：：：：：
+：：：：：：：：：：：：：：：：：
+：：：：：：：：：：：：：：：</p>
+
+<ul>
+<li>The entire lifetime
+从创建到销毁的过程。一般在<code>onCreate()</code>完成初始化，在<code>onDestroy()</code>中释放所有资源。例如，音乐service在<code>onCreate()</code>创建一个线程来音乐，在<code>onDestroy()</code>中停止线程。无论在<code>startService()</code>还是<code>bindService()</code>都会调用<code>onCreate()</code>和<code>onDestroy()</code>。</li>
+<li><p>The active lifetime
+开始于<code>onStartCommand()</code>或<code>onBind()</code>。各自通过各自的方式传递Intent对象。
+started service的active lifetime的结束时间是entire lifetime结束时间。bound service active lifetime的结束时间在返回<code>onUnbind()</code>时。
+注意：</p></li>
+<li><p>在service生命周期中没有<code>onStop()</code>回调方法。</p></li>
+<li>虽然上图的生命周期是分开的，但是一个started service在调用<code>onStartCommand()</code>（通过<code>startService()</code>）之后，仍然可以调用<code>onBind()</code>（通过<code>bindService()</code>）。</li>
+</ul>
+
+<p>如下例子：</p>
+
+<div class="highlight highlight-java"><pre>
+</pre></div>
+
+<p>不同于activity，service中的周期方法不用调用父类对应的方法。</p>
+
+<p>Creating a Bound Service</p>
+
+<p>先看notification再看下面的
+Sending Notifications to the User之后再看
+Running a Service in the Foreground</p>
+
 <p><a href="http://blog.csdn.net/wangyongge85/article/details/45395167">http://blog.csdn.net/wangyongge85/article/details/45395167</a></p>
 
 <p>service和线程
-那么问题来了，既然service需要在子线程中执行，那么为什么还需要service，直接在子线程中进行相关的操作不就可以了么？</p>
+那么问题来了，既然service需要在子线程中执行，那么为什么还需要service，直接在子线程中进行相关的操作不就可以了么？
+线程依赖进程，进程死了，线程肯定也不存在了。因此在service中开启的线程当service销毁时，线程就会销毁。</p>
 
 <p>Processes and Threading文档看看系统何时可能销毁service</p>
 </article></body></html>
