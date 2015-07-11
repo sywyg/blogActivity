@@ -1091,32 +1091,15 @@ started方式启动的service必须管理好自己的生命周期。也就是，
 <ul>
 <li>The entire lifetime
 从创建到销毁的过程。一般在<code>onCreate()</code>完成初始化，在<code>onDestroy()</code>中释放所有资源。例如，音乐service在<code>onCreate()</code>创建一个线程来音乐，在<code>onDestroy()</code>中停止线程。无论在<code>startService()</code>还是<code>bindService()</code>都会调用<code>onCreate()</code>和<code>onDestroy()</code>。</li>
-<li><p>The active lifetime
+<li>The active lifetime
 开始于<code>onStartCommand()</code>或<code>onBind()</code>。各自通过各自的方式传递Intent对象。
-started service的active lifetime的结束时间是entire lifetime结束时间。bound service active lifetime的结束时间在返回<code>onUnbind()</code>时。
-注意：</p></li>
-<li><p>在service生命周期中没有<code>onStop()</code>回调方法。</p></li>
-<li>虽然上图的生命周期是分开的，但是一个started service在调用<code>onStartCommand()</code>（通过<code>startService()</code>）之后，仍然可以调用<code>onBind()</code>（通过<code>bindService()</code>）。</li>
+started service的active lifetime的结束时间是entire lifetime结束时间。bound service active lifetime的结束时间在返回<code>onUnbind()</code>时。</li>
 </ul>
 
-<p>如下例子：</p>
+<p>注意：</p>
 
-<div class="highlight highlight-java"><pre>
-</pre></div>
-
-<p>不同于activity，service中的周期方法不用调用父类对应的方法。</p>
-
-<p>Creating a Bound Service</p>
-
-<p>先看notification再看下面的
-Sending Notifications to the User之后再看
-Running a Service in the Foreground</p>
-
-<p><a href="http://blog.csdn.net/wangyongge85/article/details/45395167">http://blog.csdn.net/wangyongge85/article/details/45395167</a></p>
-
-<p>service和线程
-那么问题来了，既然service需要在子线程中执行，那么为什么还需要service，直接在子线程中进行相关的操作不就可以了么？
-线程依赖进程，进程死了，线程肯定也不存在了。因此在service中开启的线程当service销毁时，线程就会销毁。</p>
-
-<p>Processes and Threading文档看看系统何时可能销毁service</p>
+<ul>
+<li>在service生命周期中没有<code>onStop()</code>回调方法。</li>
+<li>虽然上图的生命周期是分开的，但是一个started service在调用<code>onStartCommand()</code>（通过<code>startService()</code>）之后，仍然可以调用<code>onBind()</code>（通过<code>bindService()</code>）。</li>
+</ul>
 </article></body></html>
