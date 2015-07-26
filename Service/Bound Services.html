@@ -860,7 +860,7 @@ body .markdown-body
   float: left;
   margin: 0.3em 0 0.25em -1.6em;
   vertical-align: middle;
-}</style><title>Bound Services</title></head><body><article class="markdown-body"><p>第二部分bound service</p>
+}</style><title>Bound Services</title></head><body><article class="markdown-body"><p>这是service的第二部分bound service。若第一部分没看的，请参考：</p>
 
 <p>bound service 相当于客户-服务器接口中的服务器。bound service 允许其它组件（除了broadcast receiver）绑定该service，然后进一步操作：发送请求，接收响应，甚至IPC。bound service 只有在其他组件绑定它时才处于存活状态，且会受到绑定它的组件影响。</p>
 
@@ -877,33 +877,39 @@ body .markdown-body
 
 <p>当最后一个客户端解绑service时，系统销毁该service，除非<code>startService()</code>方式启动的service。</p>
 
+<h2>
+<a id="user-content-绑定started方式的service" class="anchor" href="#%E7%BB%91%E5%AE%9Astarted%E6%96%B9%E5%BC%8F%E7%9A%84service" aria-hidden="true"><span class="octicon octicon-link"></span></a>绑定Started方式的service</h2>
+
+<p>一个service可以同时started和绑定。若一个service可以同时被started和绑定，那么当service以started方式启动时，当所有客户端解绑时，系统不会销毁该service。而是必须通过<code>stopSelf()</code>或<code>stopService()</code>。</p>
+
+<p>尽管通常情况下只需要实现<code>onBind()</code>和<code>onStartCommand()</code>两者中的一个，但是有时候需要实现这两种方式。例如一个音乐播放器，当activity启动service时可以播放音乐，即使用户离开应用；当用户又回来时activity又可以绑定service，重新控制service。</p>
+
+<p>更多信息请看管理绑定的service生命周期（下面）。</p>
+
 <h1>
 <a id="user-content-创建bound-service" class="anchor" href="#%E5%88%9B%E5%BB%BAbound-service" aria-hidden="true"><span class="octicon octicon-link"></span></a>创建Bound Service</h1>
 
 <p>当创建bound Serivce时，我们必须提供一个IBinder对象，该对象提供了一个编程接口用于和客户端交互。有下列三种方式定义该接口：</p>
 
 <ul>
-<li>
-<p>扩展Binder类
-若service是应用程序私有的，且和客户端在同一个进程中，可以通过这种方式，一般的bound service都是这种方式。客户端得到Binder实例后可以直接实用该类的public方法，甚至可以service类的public方法。</p>
-
-<p>当我们的service只服务于我们自己的程序时，这种是最好的选择。唯一不使用该方式的原因在于，service被其他应用使用或跨进程。</p>
-</li>
-<li>
-<p>使用Messenger
-若接口要跨进程的工作的话，可以通过Messenger。这种方式，service定义了一个Handler来处理不同的Message对象。对于Messenger来说，Handler是基础，它能够和客户端共享Ibinder，运行客户使用Message发送消息到service。另外，客户端可以定义自己的Messenger来处理service回发的消息。</p>
-
-<p>这是最简单的方式实现IPC，因为Messenger把所有请求都放在一个线程中，因此不必担心线程安全问题。</p>
-</li>
-<li>
-<p>使用AIDL
-AIDL是Android Interface Definition Language，翻译的话应该是android接口定义语言。AIDL将对象解析为操作系统可识别的原始形态，并将它们跨进程序列化（marshall）以完成IPC（这段翻译的有问题）。使用Messenger也是基于AIDL的，Messenger把所有请求都放在一个线程中，service每次处理一个。然而对于AIDL实现来说。service可以同时处理多个请求。这种情况下，你的服务必须拥有多线程处理能力，并且是以线程安全的方式编写的。</p>
-
-<p>要直接使用AIDL，你必须创建一个<code>.aidl</code>文件，其中定义了编程接口。 Android SDK 工具使用此文件来自动生成一个抽象类，其中实现了接口及对IPC的处理，然后我们就可以在自己的服务中继承该类。</p>
-</li>
+<li>扩展Binder类
+Binder类实现了IBinder接口，并非抽象类。
+若service是应用程序私有的，且和客户端在同一个进程中，可以通过这种方式，一般的bound service都是这种方式。客户端得到Binder实例后可以直接使用该类的public方法，甚至可以使用service类的public方法。
+当我们的service只服务于我们自己的程序时，这种是最好的选择。唯一不使用该方式的原因在于，service被其他应用使用或跨进程。</li>
+<li>使用Messenger
+Messenger是final类，实现了Parcelable接口。
+若接口要跨进程的工作的话，可以通过Messenger。这种方式，service定义了一个Handler来处理不同的Message对象。对于Messenger来说，Handler是基础，它能够和客户端共享Ibinder，运行客户使用Message发送消息到service。另外，客户端可以定义自己的Messenger来处理service回发的消息。
+这是最简单也是最常用的方式实现IPC，因为Messenger把所有请求都放在一个线程中，因此不必担心线程安全问题。</li>
+<li>使用AIDL
+AIDL是Android Interface Definition Language，翻译的话应该是android接口定义语言。AIDL将对象解析为操作系统可识别的数据类型（primitives，或者是原始形态），并将它们跨进程序列化（marshall）以完成IPC（AIDL performs all the work to decompose objects into primitives that the operating system can understand and marshall them across processes to perform IPC.）。使用Messenger也是基于AIDL的，Messenger把所有请求都放在一个线程中，service每次处理一个。然而对于AIDL实现来说。service可以同时处理多个请求（应该是并发处理）。这种情况下，你的服务必须拥有多线程处理能力，并且是以线程安全的方式编写的。
+要直接使用AIDL，你必须创建一个<code>.aidl</code>文件，其中定义了编程接口。 Android SDK 工具使用此文件来自动生成一个抽象类，其中实现了接口及对IPC的处理，然后我们就可以在自己的服务中继承该类。</li>
 </ul>
 
 <p>注意：绝大多数应用程序都不应该用AIDL来创建Bound Service，因为这可能需要多线程处理能力并且会让代码变得更为复杂。因此，AIDL对绝大多数应用程序都不适用。</p>
+
+<p>注：关于marshalling维基上是这样解释的：In computer science, marshalling or marshaling is the process of transforming the memory representation of an object to a data format suitable for storage or transmission, and it is typically used when data must be moved between different parts of a computer program or from one program to another. Marshalling is similar to serialization and is used to communicate to remote objects with an object, in this case a serialized object. It simplifies complex communication, using custom/complex objects to communicate instead of primitives. The opposite, or reverse, of marshalling is called unmarshalling (or demarshalling, similar to deserialization).</p>
+
+<p>注：在四大基本组件中，BroadcastReceiver不能作为Bound Service的客户端。因为BroadcastReceiver的生命周期很短，当执行完<code>onReceive()</code>回调时，BroadcastReceiver生命周期完结。而Bound Service又与Client本身的生命周期相关，因此，Android中不允许BroadcastReceiver去<code>bindService()</code>，当有此类需求时，可以考虑通过<code>startService()</code>（四大组件Started Service 都是通过<code>startService()</code>）或者再绑定。</p>
 
 <p>下面详细讲解以上方法（AIDL单独介绍）。</p>
 
@@ -923,68 +929,102 @@ AIDL是Android Interface Definition Language，翻译的话应该是android接�
 <li>在客户端通过ServiceConnection接口中的<code>onServiceConnected()</code>方法接收该Binder对象，然后就可以调用它的相关方法了。</li>
 </ol>
 
-<p>注意：service和客户端必须在同一个应用程序的原因在于，客户端可以转换返回的Binder对象，然后调用相关方法；service和客户端必须在一个进程中的原因在于，这种方式不执行任何跨进程的序列化（marshalling）。</p>
-
-<p>注：关于marshalling维基上是这样解释的：In computer science, marshalling or marshaling is the process of transforming the memory representation of an object to a data format suitable for storage or transmission, and it is typically used when data must be moved between different parts of a computer program or from one program to another. Marshalling is similar to serialization and is used to communicate to remote objects with an object, in this case a serialized object. It simplifies complex communication, using custom/complex objects to communicate instead of primitives. The opposite, or reverse, of marshalling is called unmarshalling (or demarshalling, similar to deserialization).</p>
+<p>注意：<em>service和客户端必须在同一个应用程序的原因在于，客户端可以转换返回的Binder对象，然后调用相关方法；service和客户端必须在一个进程中的原因在于，这种方式不执行任何跨进程的序列化（marshalling）。</em></p>
 
 <p>根据官方文档中的示例代码修改代码如下：</p>
 
 <div class="highlight highlight-java"><pre>
+<span class="pl-c">/**</span>
+<span class="pl-c"> * bound service</span>
+<span class="pl-c"> * 通过继承Binder类.在同一进程中通信，并非IPC</span>
+<span class="pl-c"> * @author sywyg</span>
+<span class="pl-c"> * @since 2015.7.15</span>
+<span class="pl-c"> */</span>
 <span class="pl-k">public</span> <span class="pl-k">class</span> <span class="pl-en">LocalService</span> <span class="pl-k">extends</span> <span class="pl-e">Service</span> {
-    <span class="pl-c">// Binder given to clients</span>
+    <span class="pl-k">private</span> <span class="pl-k">final</span> <span class="pl-smi">String</span> <span class="pl-c1">TAG</span> <span class="pl-k">=</span> <span class="pl-s"><span class="pl-pds">"</span>result<span class="pl-pds">"</span></span>;
     <span class="pl-k">private</span> <span class="pl-k">final</span> <span class="pl-smi">IBinder</span> mBinder <span class="pl-k">=</span> <span class="pl-k">new</span> <span class="pl-smi">LocalBinder</span>();
-    <span class="pl-c">// Random number generator</span>
     <span class="pl-k">private</span> <span class="pl-k">final</span> <span class="pl-smi">Random</span> mGenerator <span class="pl-k">=</span> <span class="pl-k">new</span> <span class="pl-smi">Random</span>();
 
-    <span class="pl-c">/**</span>
-<span class="pl-c">     * Class used for the client Binder.  Because we know this service always</span>
-<span class="pl-c">     * runs in the same process as its clients, we don't need to deal with IPC.</span>
-<span class="pl-c">     * 在同一进程中通信，并非IPC</span>
-<span class="pl-c">     */</span>
+    <span class="pl-k">public</span> <span class="pl-en">LocalService</span>() {}
+
     <span class="pl-k">public</span> <span class="pl-k">class</span> <span class="pl-en">LocalBinder</span> <span class="pl-k">extends</span> <span class="pl-e">Binder</span> {
-        <span class="pl-c">/**</span>
-<span class="pl-c">         * 通过该方法获取LocalService对象</span>
-<span class="pl-c">         */</span>
-        <span class="pl-smi">LocalService</span> <span class="pl-en">getService</span>() {
-            <span class="pl-c">// Return this instance of LocalService so clients can call public methods</span>
-            <span class="pl-smi">Log</span><span class="pl-k">.</span>d(<span class="pl-s"><span class="pl-pds">"</span>result<span class="pl-pds">"</span></span>,<span class="pl-s"><span class="pl-pds">"</span>getService executed<span class="pl-pds">"</span></span>);
+        <span class="pl-c">//获得本地service对象，以便调用service中public方法</span>
+        <span class="pl-k">public</span> <span class="pl-smi">LocalService</span> <span class="pl-en">getLocalService</span>(){
+            <span class="pl-smi">Log</span><span class="pl-k">.</span>d(<span class="pl-c1">TAG</span>,<span class="pl-s"><span class="pl-pds">"</span>getLocalService is executed ...<span class="pl-pds">"</span></span>);
             <span class="pl-k">return</span> <span class="pl-smi">LocalService</span><span class="pl-k">.</span><span class="pl-v">this</span>;
         }
+        <span class="pl-c">/**</span>
+<span class="pl-c">         * 模拟客户端要处理的LocalBinder中的public方法</span>
+<span class="pl-c">         * @return</span>
+<span class="pl-c">         */</span>
+        <span class="pl-k">public</span>  <span class="pl-k">void</span> <span class="pl-en">sayHello</span>(){
+            <span class="pl-smi">Toast</span><span class="pl-k">.</span>makeText(getApplicationContext(),<span class="pl-s"><span class="pl-pds">"</span>hello service<span class="pl-pds">"</span></span>,<span class="pl-smi">Toast</span><span class="pl-c1"><span class="pl-k">.</span>LENGTH_LONG</span>)<span class="pl-k">.</span>show();
+        }
+
     }
 
     <span class="pl-k">@Override</span>
+    <span class="pl-k">public</span> <span class="pl-k">void</span> <span class="pl-en">onCreate</span>() {
+        <span class="pl-v">super</span><span class="pl-k">.</span>onCreate();
+        <span class="pl-smi">Log</span><span class="pl-k">.</span>d(<span class="pl-s"><span class="pl-pds">"</span>result<span class="pl-pds">"</span></span>,<span class="pl-s"><span class="pl-pds">"</span>onCreate executed<span class="pl-pds">"</span></span>);
+    }
+
+    <span class="pl-c">/**</span>
+<span class="pl-c">     * 绑定时调用</span>
+<span class="pl-c">     * @param intent 传递过来的intent</span>
+<span class="pl-c">     * @return 返回IBinder对象，传递给ServiceConnection实例处理</span>
+<span class="pl-c">     */</span>
+    <span class="pl-k">@Override</span>
     <span class="pl-k">public</span> <span class="pl-smi">IBinder</span> <span class="pl-en">onBind</span>(<span class="pl-smi">Intent</span> <span class="pl-v">intent</span>) {
-        <span class="pl-smi">Log</span><span class="pl-k">.</span>d(<span class="pl-s"><span class="pl-pds">"</span>result<span class="pl-pds">"</span></span>,<span class="pl-s"><span class="pl-pds">"</span>onBind...<span class="pl-pds">"</span></span>);
+        <span class="pl-smi">Log</span><span class="pl-k">.</span>d(<span class="pl-s"><span class="pl-pds">"</span>result<span class="pl-pds">"</span></span>,<span class="pl-s"><span class="pl-pds">"</span>onBind executed<span class="pl-pds">"</span></span>);
         <span class="pl-k">return</span> mBinder;
     }
 
+    <span class="pl-c">/**</span>
+<span class="pl-c">     * 解绑时调用</span>
+<span class="pl-c">     * @param intent</span>
+<span class="pl-c">     * @return</span>
+<span class="pl-c">     */</span>
     <span class="pl-k">@Override</span>
     <span class="pl-k">public</span> <span class="pl-k">boolean</span> <span class="pl-en">onUnbind</span>(<span class="pl-smi">Intent</span> <span class="pl-v">intent</span>) {
-        <span class="pl-smi">Log</span><span class="pl-k">.</span>d(<span class="pl-s"><span class="pl-pds">"</span>result<span class="pl-pds">"</span></span>,<span class="pl-s"><span class="pl-pds">"</span>onUnbind...<span class="pl-pds">"</span></span>);
+        <span class="pl-smi">Log</span><span class="pl-k">.</span>d(<span class="pl-s"><span class="pl-pds">"</span>result<span class="pl-pds">"</span></span>,<span class="pl-s"><span class="pl-pds">"</span>onUnbind executed<span class="pl-pds">"</span></span>);
         <span class="pl-k">return</span> <span class="pl-v">super</span><span class="pl-k">.</span>onUnbind(intent);
+    }
+    <span class="pl-k">@Override</span>
+    <span class="pl-k">public</span> <span class="pl-k">void</span> <span class="pl-en">onDestroy</span>(){
+        <span class="pl-v">super</span><span class="pl-k">.</span>onDestroy();
+        <span class="pl-smi">Log</span><span class="pl-k">.</span>d(<span class="pl-s"><span class="pl-pds">"</span>result<span class="pl-pds">"</span></span>,<span class="pl-s"><span class="pl-pds">"</span>onDestroy executed<span class="pl-pds">"</span></span>);
     }
 
     <span class="pl-c">/**</span>
-<span class="pl-c">     * method for clients</span>
-<span class="pl-c">     * 模拟客户端需要处理的方法</span>
+<span class="pl-c">     * 模拟客户端要处理的service中的public方法</span>
+<span class="pl-c">     * @return</span>
 <span class="pl-c">     */</span>
-    <span class="pl-k">public</span> <span class="pl-k">int</span> <span class="pl-en">getRandomNumber</span>() {
+    <span class="pl-k">public</span> <span class="pl-k">int</span> <span class="pl-en">getRandomNumber</span>(){
         <span class="pl-k">return</span> mGenerator<span class="pl-k">.</span>nextInt(<span class="pl-c1">100</span>);
     }
+
 }
 </pre></div>
 
 <p>下面是一个绑定LocalService的activity，当点击按钮是回调<code>getRandomNumber()</code>:</p>
 
 <div class="highlight highlight-java"><pre>
-<span class="pl-k">public</span> <span class="pl-k">class</span> <span class="pl-en">BindingActivity</span> <span class="pl-k">extends</span> <span class="pl-e">Activity</span> {
-    <span class="pl-smi">LocalService</span> mService;
-    <span class="pl-k">boolean</span> mBound <span class="pl-k">=</span> <span class="pl-c1">false</span>;
+<span class="pl-c">/**</span>
+<span class="pl-c"> * 绑定service练习</span>
+<span class="pl-c"> * @athor sywyg</span>
+<span class="pl-c"> * @since 2015.7.15</span>
+<span class="pl-c"> */</span>
 
+<span class="pl-k">public</span> <span class="pl-k">class</span> <span class="pl-en">BindingActivity</span> <span class="pl-k">extends</span> <span class="pl-e">Activity</span> {
+    <span class="pl-k">private</span> <span class="pl-k">final</span> <span class="pl-smi">String</span> <span class="pl-c1">TAG</span> <span class="pl-k">=</span> <span class="pl-s"><span class="pl-pds">"</span>result<span class="pl-pds">"</span></span>;
+    <span class="pl-k">private</span> <span class="pl-k">boolean</span> mBound <span class="pl-k">=</span> <span class="pl-c1">false</span>;
+    <span class="pl-k">private</span> <span class="pl-smi">LocalService</span> mLocalService;
+    <span class="pl-k">private</span> <span class="pl-smi">LocalService</span><span class="pl-k">.</span><span class="pl-smi">LocalBinder</span> binder;
     <span class="pl-k">@Override</span>
     <span class="pl-k">protected</span> <span class="pl-k">void</span> <span class="pl-en">onCreate</span>(<span class="pl-smi">Bundle</span> <span class="pl-v">savedInstanceState</span>) {
         <span class="pl-v">super</span><span class="pl-k">.</span>onCreate(savedInstanceState);
-        setContentView(<span class="pl-smi">R</span><span class="pl-k">.</span>layout<span class="pl-k">.</span>activity_binding);
+        setContentView(<span class="pl-smi">R</span><span class="pl-k">.</span>layout<span class="pl-k">.</span>activity_bound_service);
     }
 
     <span class="pl-k">@Override</span>
@@ -992,70 +1032,84 @@ AIDL是Android Interface Definition Language，翻译的话应该是android接�
         <span class="pl-v">super</span><span class="pl-k">.</span>onStart();
         <span class="pl-c">// Bind to LocalService</span>
         <span class="pl-c">//绑定服务</span>
-        <span class="pl-smi">Intent</span> intent <span class="pl-k">=</span> <span class="pl-k">new</span> <span class="pl-smi">Intent</span>(<span class="pl-v">this</span>, <span class="pl-smi">LocalService</span><span class="pl-k">.</span>class);
-        bindService(intent, mConnection, <span class="pl-smi">Context</span><span class="pl-c1"><span class="pl-k">.</span>BIND_AUTO_CREATE</span>);
-    }
-
-    <span class="pl-k">@Override</span>
-    <span class="pl-k">protected</span> <span class="pl-k">void</span> <span class="pl-en">onStop</span>() {
-        <span class="pl-v">super</span><span class="pl-k">.</span>onStop();
-        <span class="pl-c">// Unbind from the service</span>
-        <span class="pl-c">//解除绑定</span>
-        <span class="pl-k">if</span> (mBound) {
-            unbindService(mConnection);
-            mBound <span class="pl-k">=</span> <span class="pl-c1">false</span>;
-        }
-    }
-
-    <span class="pl-c">/** Called when a button is clicked (the button in the layout file attaches to</span>
-<span class="pl-c">     * this method with the android:onClick attribute)</span>
-<span class="pl-c">     * 客户端处理服务对象业务方法</span>
-<span class="pl-c">     */</span>
-    <span class="pl-k">public</span> <span class="pl-k">void</span> <span class="pl-en">onButtonClick</span>(<span class="pl-smi">View</span> <span class="pl-v">v</span>) {
-        <span class="pl-k">if</span> (mBound) {
-            <span class="pl-c">// Call a method from the LocalService.</span>
-            <span class="pl-c">// However, if this call were something that might hang, then this request should</span>
-            <span class="pl-c">// occur in a separate thread to avoid slowing down the activity performance.</span>
-            <span class="pl-c">//若耗时则应在一个新的线程中运行</span>
-            <span class="pl-k">int</span> num <span class="pl-k">=</span> mService<span class="pl-k">.</span>getRandomNumber();
-            <span class="pl-smi">Toast</span><span class="pl-k">.</span>makeText(<span class="pl-v">this</span>, <span class="pl-s"><span class="pl-pds">"</span>number: <span class="pl-pds">"</span></span> <span class="pl-k">+</span> num, <span class="pl-smi">Toast</span><span class="pl-c1"><span class="pl-k">.</span>LENGTH_SHORT</span>)<span class="pl-k">.</span>show();
-        }
+        <span class="pl-smi">Intent</span> intent <span class="pl-k">=</span> <span class="pl-k">new</span> <span class="pl-smi">Intent</span>(<span class="pl-v">this</span>,<span class="pl-smi">LocalService</span><span class="pl-k">.</span>class);
+        bindService(intent,mConnection,<span class="pl-c1">BIND_AUTO_CREATE</span>);
     }
 
     <span class="pl-c">/** Defines callbacks for service binding, passed to bindService()</span>
 <span class="pl-c">     * 若onBind(Intent intent)方法不返回对象则不调用该ServiceConnection实例</span>
 <span class="pl-c">     */</span>
     <span class="pl-k">private</span> <span class="pl-smi">ServiceConnection</span> mConnection <span class="pl-k">=</span> <span class="pl-k">new</span> <span class="pl-smi">ServiceConnection</span>() {
-<span class="pl-c">//执行该方法表示绑定成功，并可以调用服务了。</span>
+        <span class="pl-c">//执行该方法表示绑定成功，并可以调用服务了。</span>
         <span class="pl-k">@Override</span>
-        <span class="pl-k">public</span> <span class="pl-k">void</span> <span class="pl-en">onServiceConnected</span>(<span class="pl-smi">ComponentName</span> <span class="pl-v">className</span>,
-                                       <span class="pl-smi">IBinder</span> <span class="pl-v">service</span>) {
+        <span class="pl-k">public</span> <span class="pl-k">void</span> <span class="pl-en">onServiceConnected</span>(<span class="pl-smi">ComponentName</span> <span class="pl-v">name</span>, <span class="pl-smi">IBinder</span> <span class="pl-v">service</span>) {
             <span class="pl-c">// We've bound to LocalService, cast the IBinder and get LocalService instance</span>
-            <span class="pl-smi">LocalService</span><span class="pl-k">.</span><span class="pl-smi">LocalBinder</span> binder <span class="pl-k">=</span> (<span class="pl-smi">LocalService</span><span class="pl-k">.</span><span class="pl-smi">LocalBinder</span>) service;
-            mService <span class="pl-k">=</span> binder<span class="pl-k">.</span>getService();
-            <span class="pl-smi">Log</span><span class="pl-k">.</span>d(<span class="pl-s"><span class="pl-pds">"</span>result<span class="pl-pds">"</span></span>, <span class="pl-s"><span class="pl-pds">"</span>onServiceConnected...<span class="pl-pds">"</span></span>);
+            binder<span class="pl-k">=</span> (<span class="pl-smi">LocalService</span><span class="pl-k">.</span><span class="pl-smi">LocalBinder</span>)service;
+            mLocalService <span class="pl-k">=</span> binder<span class="pl-k">.</span>getLocalService();
             mBound <span class="pl-k">=</span> <span class="pl-c1">true</span>;
         }
-
         <span class="pl-k">@Override</span>
-        <span class="pl-k">public</span> <span class="pl-k">void</span> <span class="pl-en">onServiceDisconnected</span>(<span class="pl-smi">ComponentName</span> <span class="pl-v">arg0</span>) {
-            <span class="pl-smi">Log</span><span class="pl-k">.</span>d(<span class="pl-s"><span class="pl-pds">"</span>result<span class="pl-pds">"</span></span>, <span class="pl-s"><span class="pl-pds">"</span>onServiceDisconnected...<span class="pl-pds">"</span></span>);
+        <span class="pl-k">public</span> <span class="pl-k">void</span> <span class="pl-en">onServiceDisconnected</span>(<span class="pl-smi">ComponentName</span> <span class="pl-v">name</span>) {
+            <span class="pl-smi">Log</span><span class="pl-k">.</span>d(<span class="pl-c1">TAG</span>, <span class="pl-s"><span class="pl-pds">"</span>onServiceDisconnected...<span class="pl-pds">"</span></span>);
             mBound <span class="pl-k">=</span> <span class="pl-c1">false</span>;
         }
     };
+
+    <span class="pl-k">public</span> <span class="pl-k">void</span> <span class="pl-en">onButtonClick</span>(<span class="pl-smi">View</span> <span class="pl-v">v</span>){
+        <span class="pl-k">switch</span> (v<span class="pl-k">.</span>getId()){
+            <span class="pl-c">// 调用service方法</span>
+            <span class="pl-k">case</span> <span class="pl-smi">R</span><span class="pl-k">.</span>id<span class="pl-k">.</span>btn_call_method<span class="pl-k">:</span>
+                <span class="pl-c">// Call a method from the LocalService.</span>
+                <span class="pl-c">// However, if this call were something that might hang, then this request should</span>
+                <span class="pl-c">// occur in a separate thread to avoid slowing down the activity performance.</span>
+                <span class="pl-c">//若耗时则应在一个新的线程中运行</span>
+                <span class="pl-k">if</span>(mBound){
+                    <span class="pl-smi">Toast</span><span class="pl-k">.</span>makeText(<span class="pl-v">this</span>,
+                            mLocalService<span class="pl-k">.</span>getRandomNumber() <span class="pl-k">+</span> <span class="pl-s"><span class="pl-pds">"</span><span class="pl-pds">"</span></span>, <span class="pl-smi">Toast</span><span class="pl-c1"><span class="pl-k">.</span>LENGTH_LONG</span>)<span class="pl-k">.</span>show();
+                    binder<span class="pl-k">.</span>sayHello();
+                }
+                <span class="pl-k">break</span>;
+            <span class="pl-c">// 解绑</span>
+            <span class="pl-k">case</span> <span class="pl-smi">R</span><span class="pl-k">.</span>id<span class="pl-k">.</span>btn_bind<span class="pl-k">:</span>
+                <span class="pl-k">if</span>(mBound){
+                    unbindService(mConnection);
+                    mBound <span class="pl-k">=</span> <span class="pl-c1">false</span>;
+                }
+                <span class="pl-k">break</span>;
+        }
+
+    }
+    <span class="pl-k">@Override</span>
+    <span class="pl-k">protected</span> <span class="pl-k">void</span> <span class="pl-en">onStop</span>() {
+        <span class="pl-v">super</span><span class="pl-k">.</span>onStop();
+        <span class="pl-c">//解绑</span>
+        <span class="pl-k">if</span>(mBound){
+            unbindService(mConnection);
+            mBound <span class="pl-k">=</span> <span class="pl-c1">false</span>;
+        }
+    }
 }
+
 </pre></div>
+
+<p>测试结果为：</p>
+
+<ol>
+<li>继承Binder类方式可以在同一应用程序和进程中完成bound service和activity通信，在activity中可以调用LocalBinder类中的方法也可以调用LocalService中的方法。</li>
+<li>执行<code>unBindService()</code>之后，service就会执行<code>onDestroy()</code>方法。</li>
+<li>只通过bound方式的service不会调用<code>onStartCommand()</code>。</li>
+<li>同一个客户端反复绑定不会出现任何错误，且只调用一次<code>onBind()；多个客户端绑定一个service只在第一次调用</code>onBind()`之后直接使用IBinder实例。</li>
+</ol>
 
 <p>可以看到通过上面这种方式可以实现同一进程间客户端（Client）和Bound Service之间的通信。
 局限：客户端与Service必须属于同一个进程，不能实现进程间通信（IPC）。否则会出现类似于<code>android.os.BinderProxy cannot be cast to xxx</code>错误。</p>
 
-<p>注：在四大基本组件中，BroadcastReceiver不能作为Bound Service的客户端。因为BroadcastReceiver的生命周期很短，当执行完<code>onReceive()</code>回调时，BroadcastReceiver生命周期完结。而Bound Service又与Client本身的生命周期相关，因此，Android中不允许BroadcastReceiver去<code>bindService()</code>，当有此类需求时，可以考虑通过<code>startService()</code>（四大组件Started Service 都是通过<code>startService()</code>）。</p>
-
 <h2>
 <a id="user-content-使用messenger" class="anchor" href="#%E4%BD%BF%E7%94%A8messenger" aria-hidden="true"><span class="octicon octicon-link"></span></a>使用Messenger</h2>
 
-<p>如果需要远程通信，可以使用一个 Messenger 来提供服务的接口。这种技术能无需使用AIDL就能进行进程间通信（IPC）。
-Messenger具体使用步骤如下:</p>
+<p>如果需要远程通信，可以使用一个 Messenger 来提供服务的接口。这种技术能无需自定义AIDL就能进行进程间通信（IPC）。</p>
+
+<p>Messenger具体使用步骤如下:</p>
 
 <ul>
 <li>service中实现一个Handler对象，用于客户端每次调用时处理消息;</li>
@@ -1070,12 +1124,20 @@ Messenger具体使用步骤如下:</p>
 <p>下面是一个简单的使用Messenger的serivce例子：</p>
 
 <div class="highlight highlight-java"><pre>
+<span class="pl-c">/**</span>
+<span class="pl-c"> * 使用Messenger进行IPC</span>
+<span class="pl-c"> * @author sywyg</span>
+<span class="pl-c"> * @since 2015.7.15</span>
+<span class="pl-c"> */</span>
 <span class="pl-k">public</span> <span class="pl-k">class</span> <span class="pl-en">MessengerService</span> <span class="pl-k">extends</span> <span class="pl-e">Service</span> {
-    <span class="pl-c">/**</span>
-<span class="pl-c">     * Command to the service to display a message</span>
-<span class="pl-c">     * 消息标记</span>
-<span class="pl-c">     */</span>
-    <span class="pl-k">static</span> <span class="pl-k">final</span> <span class="pl-k">int</span> <span class="pl-c1">MSG_SAY_HELLO</span> <span class="pl-k">=</span> <span class="pl-c1">1</span>;
+    <span class="pl-k">private</span> <span class="pl-k">final</span> <span class="pl-smi">String</span> <span class="pl-c1">TAG</span> <span class="pl-k">=</span> <span class="pl-s"><span class="pl-pds">"</span>result<span class="pl-pds">"</span></span>;
+    <span class="pl-c">// 消息标记</span>
+    <span class="pl-k">private</span> <span class="pl-k">static</span> <span class="pl-k">final</span> <span class="pl-k">int</span> <span class="pl-c1">MSG_SAY_HELLO</span> <span class="pl-k">=</span> <span class="pl-c1">1</span>;
+    <span class="pl-c">// 利用Handler对象创建messenger</span>
+    <span class="pl-k">private</span> <span class="pl-smi">Messenger</span> messenger <span class="pl-k">=</span> <span class="pl-k">new</span> <span class="pl-smi">Messenger</span>(<span class="pl-k">new</span> <span class="pl-smi">IncomingHandler</span>());
+
+    <span class="pl-k">public</span> <span class="pl-en">MessengerService</span>() {
+    }
 
     <span class="pl-c">/**</span>
 <span class="pl-c">     * Handler of incoming messages from clients.</span>
@@ -1093,118 +1155,77 @@ Messenger具体使用步骤如下:</p>
             }
         }
     }
-
-    <span class="pl-c">/**</span>
-<span class="pl-c">     * Target we publish for clients to send messages to IncomingHandler.</span>
-<span class="pl-c">     * Messenger对象</span>
-<span class="pl-c">     */</span>
-    <span class="pl-k">final</span> <span class="pl-smi">Messenger</span> mMessenger <span class="pl-k">=</span> <span class="pl-k">new</span> <span class="pl-smi">Messenger</span>(<span class="pl-k">new</span> <span class="pl-smi">IncomingHandler</span>());
-
-    <span class="pl-c">/**</span>
-<span class="pl-c">     * When binding to the service, we return an interface to our messenger</span>
-<span class="pl-c">     * for sending messages to the service.</span>
-<span class="pl-c">     */</span>
     <span class="pl-k">@Override</span>
     <span class="pl-k">public</span> <span class="pl-smi">IBinder</span> <span class="pl-en">onBind</span>(<span class="pl-smi">Intent</span> <span class="pl-v">intent</span>) {
-        <span class="pl-smi">Toast</span><span class="pl-k">.</span>makeText(getApplicationContext(), <span class="pl-s"><span class="pl-pds">"</span>binding<span class="pl-pds">"</span></span>, <span class="pl-smi">Toast</span><span class="pl-c1"><span class="pl-k">.</span>LENGTH_SHORT</span>)<span class="pl-k">.</span>show();
-        <span class="pl-k">return</span> mMessenger<span class="pl-k">.</span>getBinder();
+        <span class="pl-smi">Log</span><span class="pl-k">.</span>d(<span class="pl-c1">TAG</span>,<span class="pl-s"><span class="pl-pds">"</span>onBind is executed ...<span class="pl-pds">"</span></span>);
+       <span class="pl-k">return</span> messenger<span class="pl-k">.</span>getBinder();
     }
 }
 </pre></div>
+
+<p>为了测试，可以在AndroidManifest.xml文件中设置MessengerService新的进程，上一篇文章。</p>
 
 <p>所有的客户端都需要根据IBinder对象（service传递过来的）创建一个Messenger实例，然后可以通过<code>send()</code>发送Message对象。例如下面是一个简单的实现绑定service的例子：</p>
 
 <div class="highlight highlight-java"><pre>
-<span class="pl-k">public</span> <span class="pl-k">class</span> <span class="pl-en">ActivityMessenger</span> <span class="pl-k">extends</span> <span class="pl-e">Activity</span> {
-    <span class="pl-c">/**</span>
-<span class="pl-c">     * Messenger for communicating with the service.</span>
-<span class="pl-c">     * Messenger实例</span>
-<span class="pl-c">     */</span>
-    <span class="pl-smi">Messenger</span> mService <span class="pl-k">=</span> <span class="pl-c1">null</span>;
+<span class="pl-c">/**</span>
+<span class="pl-c"> * 使用Messenger进行IPC</span>
+<span class="pl-c"> * @author sywyg</span>
+<span class="pl-c"> * @since 2015.7.15</span>
+<span class="pl-c"> */</span>
+<span class="pl-k">public</span> <span class="pl-k">class</span> <span class="pl-en">MessengerService</span> <span class="pl-k">extends</span> <span class="pl-e">Service</span> {
+    <span class="pl-k">private</span> <span class="pl-k">final</span> <span class="pl-smi">String</span> <span class="pl-c1">TAG</span> <span class="pl-k">=</span> <span class="pl-s"><span class="pl-pds">"</span>result<span class="pl-pds">"</span></span>;
+    <span class="pl-c">// 消息标记</span>
+    <span class="pl-k">public</span> <span class="pl-k">static</span> <span class="pl-k">final</span> <span class="pl-k">int</span> <span class="pl-c1">MSG_SAY_HELLO</span> <span class="pl-k">=</span> <span class="pl-c1">1</span>;
+    <span class="pl-c">// 利用Handler对象创建messenger</span>
+    <span class="pl-k">private</span> <span class="pl-smi">Messenger</span> messenger <span class="pl-k">=</span> <span class="pl-k">new</span> <span class="pl-smi">Messenger</span>(<span class="pl-k">new</span> <span class="pl-smi">IncomingHandler</span>());
 
-    <span class="pl-c">/**</span>
-<span class="pl-c">     * Flag indicating whether we have called bind on the service.</span>
-<span class="pl-c">     * 标记是否绑定</span>
-<span class="pl-c">     */</span>
-    <span class="pl-k">boolean</span> mBound;
-
-    <span class="pl-c">/**</span>
-<span class="pl-c">     * Class for interacting with the main interface of the service.</span>
-<span class="pl-c">     * ServiceConnection接口的实现类</span>
-<span class="pl-c">     */</span>
-    <span class="pl-k">private</span> <span class="pl-smi">ServiceConnection</span> mConnection <span class="pl-k">=</span> <span class="pl-k">new</span> <span class="pl-smi">ServiceConnection</span>() {
-        <span class="pl-k">public</span> <span class="pl-k">void</span> <span class="pl-en">onServiceConnected</span>(<span class="pl-smi">ComponentName</span> <span class="pl-v">className</span>, <span class="pl-smi">IBinder</span> <span class="pl-v">service</span>) {
-            <span class="pl-c">// This is called when the connection with the service has been</span>
-            <span class="pl-c">// established, giving us the object we can use to</span>
-            <span class="pl-c">// interact with the service.  We are communicating with the</span>
-            <span class="pl-c">// service using a Messenger, so here we get a client-side</span>
-            <span class="pl-c">// representation of that from the raw IBinder object.</span>
-            <span class="pl-c">// 连接成功时调用该方法，IBinder对象是onBinder方法传递过来的</span>
-            mService <span class="pl-k">=</span> <span class="pl-k">new</span> <span class="pl-smi">Messenger</span>(service);
-            mBound <span class="pl-k">=</span> <span class="pl-c1">true</span>;
-        }
-
-        <span class="pl-k">public</span> <span class="pl-k">void</span> <span class="pl-en">onServiceDisconnected</span>(<span class="pl-smi">ComponentName</span> <span class="pl-v">className</span>) {
-            <span class="pl-c">// This is called when the connection with the service has been</span>
-            <span class="pl-c">// unexpectedly disconnected -- that is, its process crashed.</span>
-            <span class="pl-c">//进程崩溃，连接失败时调用</span>
-            mService <span class="pl-k">=</span> <span class="pl-c1">null</span>;
-            mBound <span class="pl-k">=</span> <span class="pl-c1">false</span>;
-        }
-    };
-
-    <span class="pl-c">/**</span>
-<span class="pl-c">     * 按钮事件</span>
-<span class="pl-c">     */</span>
-    <span class="pl-k">public</span> <span class="pl-k">void</span> <span class="pl-en">sayHello</span>(<span class="pl-smi">View</span> <span class="pl-v">v</span>) {
-        <span class="pl-k">if</span> (<span class="pl-k">!</span>mBound) <span class="pl-k">return</span>;
-        <span class="pl-c">// Create and send a message to the service, using a supported 'what' value</span>
-        <span class="pl-c">// 创建Message对象</span>
-        <span class="pl-smi">Message</span> msg <span class="pl-k">=</span> <span class="pl-smi">Message</span><span class="pl-k">.</span>obtain(<span class="pl-c1">null</span>, <span class="pl-smi">MessengerService</span><span class="pl-c1"><span class="pl-k">.</span>MSG_SAY_HELLO</span>, <span class="pl-c1">0</span>, <span class="pl-c1">0</span>);
-        <span class="pl-k">try</span> {
-            <span class="pl-c">//发送消息，注意捕获异常</span>
-            mService<span class="pl-k">.</span>send(msg);
-        } <span class="pl-k">catch</span> (<span class="pl-smi">RemoteException</span> e) {
-            e<span class="pl-k">.</span>printStackTrace();
-        }
+    <span class="pl-k">public</span> <span class="pl-en">MessengerService</span>() {
+        <span class="pl-smi">Log</span><span class="pl-k">.</span>d(<span class="pl-c1">TAG</span>, <span class="pl-smi">android.os<span class="pl-k">.</span>Process</span><span class="pl-k">.</span>myPid() <span class="pl-k">+</span> <span class="pl-s"><span class="pl-pds">"</span> is MessengerService<span class="pl-pds">"</span></span>);
     }
 
-    <span class="pl-k">@Override</span>
-    <span class="pl-k">protected</span> <span class="pl-k">void</span> <span class="pl-en">onCreate</span>(<span class="pl-smi">Bundle</span> <span class="pl-v">savedInstanceState</span>) {
-        <span class="pl-v">super</span><span class="pl-k">.</span>onCreate(savedInstanceState);
-        setContentView(<span class="pl-smi">R</span><span class="pl-k">.</span>layout<span class="pl-k">.</span>main);
-    }
-
-    <span class="pl-k">@Override</span>
-    <span class="pl-k">protected</span> <span class="pl-k">void</span> <span class="pl-en">onStart</span>() {
-        <span class="pl-v">super</span><span class="pl-k">.</span>onStart();
-        <span class="pl-c">// Bind to the service</span>
-        <span class="pl-c">// 绑定service</span>
-        bindService(<span class="pl-k">new</span> <span class="pl-smi">Intent</span>(<span class="pl-v">this</span>, <span class="pl-smi">MessengerService</span><span class="pl-k">.</span>class), mConnection,
-            <span class="pl-smi">Context</span><span class="pl-c1"><span class="pl-k">.</span>BIND_AUTO_CREATE</span>);
-    }
-
-    <span class="pl-k">@Override</span>
-    <span class="pl-k">protected</span> <span class="pl-k">void</span> <span class="pl-en">onStop</span>() {
-        <span class="pl-v">super</span><span class="pl-k">.</span>onStop();
-        <span class="pl-c">// Unbind from the service</span>
-        <span class="pl-c">// 解除绑定</span>
-        <span class="pl-k">if</span> (mBound) {
-            unbindService(mConnection);
-            mBound <span class="pl-k">=</span> <span class="pl-c1">false</span>;
+    <span class="pl-c">/**</span>
+<span class="pl-c">     * Handler of incoming messages from clients.</span>
+<span class="pl-c">     * Handler处理客户端发送过来的消息</span>
+<span class="pl-c">     */</span>
+    <span class="pl-k">class</span> <span class="pl-en">IncomingHandler</span> <span class="pl-k">extends</span> <span class="pl-e">Handler</span> {
+        <span class="pl-k">@Override</span>
+        <span class="pl-k">public</span> <span class="pl-k">void</span> <span class="pl-en">handleMessage</span>(<span class="pl-smi">Message</span> <span class="pl-v">msg</span>) {
+            <span class="pl-k">switch</span> (msg<span class="pl-k">.</span>what) {
+                <span class="pl-k">case</span> <span class="pl-c1">MSG_SAY_HELLO</span><span class="pl-k">:</span>
+                    <span class="pl-smi">Toast</span><span class="pl-k">.</span>makeText(getApplicationContext(), <span class="pl-s"><span class="pl-pds">"</span>hello!<span class="pl-pds">"</span></span>, <span class="pl-smi">Toast</span><span class="pl-c1"><span class="pl-k">.</span>LENGTH_SHORT</span>)<span class="pl-k">.</span>show();
+                    <span class="pl-k">break</span>;
+                <span class="pl-k">default</span><span class="pl-k">:</span>
+                    <span class="pl-v">super</span><span class="pl-k">.</span>handleMessage(msg);
+            }
         }
+    }
+    <span class="pl-k">@Override</span>
+    <span class="pl-k">public</span> <span class="pl-smi">IBinder</span> <span class="pl-en">onBind</span>(<span class="pl-smi">Intent</span> <span class="pl-v">intent</span>) {
+        <span class="pl-smi">Log</span><span class="pl-k">.</span>d(<span class="pl-c1">TAG</span>,<span class="pl-s"><span class="pl-pds">"</span>onBind is executed ...<span class="pl-pds">"</span></span>);
+       <span class="pl-k">return</span> messenger<span class="pl-k">.</span>getBinder();
     }
 }
 </pre></div>
 
-<p>该例子没有展示service如何回应客户端，若是希望回应的话，可以在，，，这里需要写代码验证，，，，，，，，，，，，，，，，
-，，，，，，，，，，，，，，，
-，，，，，，，，，，，，，，
-，，，，，，，，，，，，，，，，
-，，，，，，，，，，，，，，
-，，，，，，，，，，，，？？
-？？？？？？？？？？？？？？
-？？？？？？？？？？？？？？</p>
+<p>上面的例子实现了通过Messenger，客户端可以向service发送消息。但是service不能向客户端发送消息。</p>
+
+<p>若要实现service向客户端发送消息，则可以通过Message中的ReplyTo参数（Messenger类型）。上面的例子已经建立连接，因此可以通过相同的办法从service向客户端发送消息：</p>
+
+<ul>
+<li>创建本地Message处理类（Handler，和service端一样创建一个自定义Handler类）；</li>
+<li>在客户端通过ReplyTo参数将本地Messenger对象发送给service（通过service传递过来形成的Messenger对象的<code>send()</code>方法）；</li>
+<li>在service中将ReplyTo参数赋值给客户端Messenger对象，该对象可以通过<code>send()</code>方法给客户端发送消息；</li>
+</ul>
+
+<p>代码和上面的类似，不再贴。</p>
+
+<h3>
+<a id="user-content-messenger和aidl比较" class="anchor" href="#messenger%E5%92%8Caidl%E6%AF%94%E8%BE%83" aria-hidden="true"><span class="octicon octicon-link"></span></a>Messenger和AIDL比较</h3>
+
+<p>当需要执行IPC时，Messenger方法比AIDL方法简单的多，这是因为Messenger方法将所有的请求排成一列，而AIDL则是处理同时多个请求（能够处理多线程问题）。</p>
+
+<p>对于大多数应用不需要执行多线程，因此使用Messenger同一时刻只执行一个请求。当要执行多线程时，需要使用AIDL定义接口。</p>
 
 <h1>
 <a id="user-content-绑定service" class="anchor" href="#%E7%BB%91%E5%AE%9Aservice" aria-hidden="true"><span class="octicon octicon-link"></span></a>绑定service</h1>
@@ -1215,7 +1236,7 @@ Messenger具体使用步骤如下:</p>
 
 <p>注意：只有activities，services和content providers能够绑定service，broadcast receiver不能绑定。</p>
 
-<p>为了绑定serivce，我们必须完成一下内容：</p>
+<p>为了绑定serivce，我们必须完成以下内容：</p>
 
 <ol>
 <li>实现ServiceConnection接口
@@ -1225,36 +1246,12 @@ Messenger具体使用步骤如下:</p>
 <code>onServiceDisconnected()</code>
 意外断开连接时调用，例如当service崩溃或被杀死时。解绑时不会调用。</li>
 <li>调用<code>bindService()</code>，并且传递ServiceConnection实例；</li>
-<li>当系统调用<code>onServiceConnected()</code>方法时，可以使用接口中定义的方法和service进行通信；</li>
+<li>当系统调用<code>onServiceConnected()</code>方法时，可以使用接口中定义的方法（或客户端中的方法）和service进行通信；</li>
 <li>调用<code>unBindService()</code>解除绑定。
-当 客户端被销毁时，它将解绑service，但是我们应该解绑当完成交互时或当service暂停时，这样，service能够在不用时停止。</li>
+当客户端被销毁时，它将解绑service，但是我们应该当完成交互时或当客户端暂停时解绑，这样，service能够在不用时停止。</li>
 </ol>
 
-<p>下面给出了一个简单的例子，实现了ServiceConnection接口：</p>
-
-<div class="highlight highlight-java"><pre>
-<span class="pl-smi">LocalService</span> mService;
-<span class="pl-k">private</span> <span class="pl-smi">ServiceConnection</span> mConnection <span class="pl-k">=</span> <span class="pl-k">new</span> <span class="pl-smi">ServiceConnection</span>() {
-    <span class="pl-c">// Called when the connection with the service is established</span>
-    <span class="pl-c">//建立连接时被调用</span>
-    <span class="pl-k">public</span> <span class="pl-k">void</span> <span class="pl-en">onServiceConnected</span>(<span class="pl-smi">ComponentName</span> <span class="pl-v">className</span>, <span class="pl-smi">IBinder</span> <span class="pl-v">service</span>) {
-        <span class="pl-c">// Because we have bound to an explicit</span>
-        <span class="pl-c">// service that is running in our own process, we can</span>
-        <span class="pl-c">// cast its IBinder to a concrete class and directly access it.</span>
-        <span class="pl-c">//下面是本地通信（同一个进程中通信）</span>
-        <span class="pl-smi">LocalBinder</span> binder <span class="pl-k">=</span> (<span class="pl-smi">LocalBinder</span>) service;
-        mService <span class="pl-k">=</span> binder<span class="pl-k">.</span>getService();
-        mBound <span class="pl-k">=</span> <span class="pl-c1">true</span>;
-    }
-
-    <span class="pl-c">// Called when the connection with the service disconnects unexpectedly</span>
-    <span class="pl-c">// 连接失败时调用</span>
-    <span class="pl-k">public</span> <span class="pl-k">void</span> <span class="pl-en">onServiceDisconnected</span>(<span class="pl-smi">ComponentName</span> <span class="pl-v">className</span>) {
-        <span class="pl-smi">Log</span><span class="pl-k">.</span>e(<span class="pl-c1">TAG</span>, <span class="pl-s"><span class="pl-pds">"</span>onServiceDisconnected<span class="pl-pds">"</span></span>);
-        mBound <span class="pl-k">=</span> <span class="pl-c1">false</span>;
-    }
-};
-</pre></div>
+<p>上面的例子都给出了具体的实现，这里不再赘述。</p>
 
 <p>有了ServiceConnection对象之后，客户端可以通过下列方法绑定service：</p>
 
@@ -1263,12 +1260,12 @@ Messenger具体使用步骤如下:</p>
 bindService(intent,mConnection,<span class="pl-smi">Context</span><span class="pl-c1"><span class="pl-k">.</span>BIND_AUTO_CREATE</span>);
 </pre></div>
 
-<p>方法参数分别为：</p>
+<p><code>bindService()</code>方法参数分别为：</p>
 
 <ul>
-<li>显示启动service的intent(隐士的也可以);</li>
-<li>ServiceConnection实例;</li>
-<li>标记，用于指示绑定的选择，BIND_AUTO_CREATE表示在service没启动时自动自动，还可以有其它值： BIND_DEBUG_UNBIND（调试解绑时的问题）BIND_NOT_FOREGROUND（阻止当前service的进程提高优先级），0 （none）。</li>
+<li>显式启动service的intent(隐式的也可以);</li>
+<li>ServiceConnection接口的实现实例;</li>
+<li>标记，用于指示绑定的选择，BIND_AUTO_CREATE表示在service没启动时自动启动，还可以有其它值： BIND_DEBUG_UNBIND（调试解绑时的问题）BIND_NOT_FOREGROUND（阻止当前service的进程提高优先级），0 （none）。</li>
 </ul>
 
 <h2>
@@ -1278,16 +1275,20 @@ bindService(intent,mConnection,<span class="pl-smi">Context</span><span class="p
 
 <ul>
 <li>需要在连接断开时捕获DeadObjectException异常。这是远程方法中抛出的唯一异常。</li>
-<li>对象时跨进程统计的参考？？神马意思？？？</li>
+<li>对象是跨进程计数的引用（Objects are reference counted across processes.），也就是说可能导致内存泄漏</li>
 <li>
 <p>绑定和解绑要在合适的位置进行：</p>
 
 <ul>
 <li>若只有当activity可见时才和service进行交互，则须在<code>onStart()</code>方法中绑定，在<code>onStop()</code>中解绑；</li>
-<li>若即使activity停止时，我们仍想要activity接收响应，则我们可以在<code>onCreate()</code>中绑定，在<code>onDestroy()</code>中解绑。此时就要多加小心：当前activity需要在整个生命周期中使用service，因此若service在另一个进程中，这种方式增加了该进程被系统杀死的可能性。</li>
+<li>若即使activity停止（未销毁）时，我们仍想要activity接收响应，则我们可以在<code>onCreate()</code>中绑定，在<code>onDestroy()</code>中解绑。此时就要多加小心：当前activity需要在整个生命周期中使用service，因此若service在另一个进程中，这种方式增加了该进程被系统杀死的可能性。</li>
 </ul>
 </li>
 </ul>
+
+<p>关于第二点，stackoverflow上有这样的回答：
+if you use this type of interprocess communication you can never be sure that your objects will be garbage collected, even when your application shuts down, unless the application you are communicating with also shuts down and that application has not communicated in the same way with any other application (which again you can never be sure of unless its yours).
+若按照他的意思应该是内存泄漏，但是作者也说了他不确定。</p>
 
 <p>注意：不要在activity中的<code>onResume()</code>中绑定和在<code>onPause()</code>中解绑，这是因为两个方法会在每次生命周期转换的过程中，应该将这些处理在转换时降到最低。同时，若多个activities中绑定了同一个service，并且在这些acitivities中相互转换的话，service会被频繁地销毁重建（在停止时解绑然后被销毁，该动作发生在另一个activity绑定它之前）。</p>
 
@@ -1296,17 +1297,20 @@ bindService(intent,mConnection,<span class="pl-smi">Context</span><span class="p
 
 <p>当service被所有客户端解绑时，系统销毁该service，除非该service先是被started方法的。因此对于存粹绑定的service我们无需管理它的生命周期--系统基于是否绑定客户端来管理。</p>
 
-<p>若你实现了<code>onStartCommand()</code>方法，则此时service被认为是sstarted方式的，因此我们必须管理它的生命周期。在这种情况下，无论是否绑定了客户端，只要调用了stop方法就会service停止。</p>
+<p>若先绑定再启动，会执行<code>onStartCommand()</code>方法，不会执行<code>onCreate()</code>方法（绑定时已执行过），关于同时绑定和启动的service何时销毁有下面几种:</p>
 
-<p>此外，如果service是started方式，然后被绑定，那么当系统调用<code>onUnbind()</code>方法时，如果我们想要接收<code>onRebind()</code>方法的回调（下一次客户端绑定该service）而不是接收<code>onBind()</code>方法的回调，则我们可以返回true。<code>onRebind()</code>方法没有返回值，但是客户端仍然可以接受IBinder对象。这种生命周期的逻辑如下：</p>
+<ul>
+<li>在解绑之前调用<code>stopSelf()</code>或<code>stopService()</code>不会销毁service；在调用<code>stopSelf()</code>或<code>stopService()</code>之后再解绑会销毁service。</li>
+<li>在解绑之后调用<code>stopSelf()</code>或<code>stopService()</code>会销毁service。</li>
+</ul>
 
-<p>图。。。。。。。。。。。。。。。。。。
-。。。。。。。。。。。。。。。。。。。。。。
-。。。。。。。。。。。。。。
-。。。。。。。。。。。。。。。。。。。。。
-。。。。。。。。。。。。。。。。。。。。。。
-。。。。。。。。。。。。。。。。。。。。
-。。。。。。。。。。。。。。。。。。。。。
-。。。。。。。。。。。。。。。。。。
-。。。。。。。。。。。。。。。。。。。。。</p>
+<p>一句话总结：要开始就得结束，要绑定就得解绑，这样才能销毁service。
+官网上有下面这样一段：</p>
+
+<p>However, if you choose to implement the onStartCommand() callback method, then you must explicitly stop the service, because the service is now considered to be started. In this case, the service runs until the service stops itself with stopSelf() or another component calls stopService(), regardless of whether it is bound to any clients.
+若你实现了<code>onStartCommand()</code>方法，则此时service被认为是sstarted方式的，因此我们必须管理它的生命周期。在这种情况下，无论是否绑定了客户端，只要调用了stop方法就会service停止。</p>
+
+<p>经过我的测试，我发现不存在这种情况。是不是我的理解问题，请大神帮忙看一下。。。</p>
+
+<p>此外，如果service是started方式，然后被绑定，那么当系统调用<code>onUnbind()</code>方法时，如果我们想要接收<code>onRebind()</code>方法的回调（下一次客户端绑定该service）而不是接收<code>onBind()</code>方法的回调，则我们可以<code>onUnbind()</code>返回true。<code>onRebind()</code>方法没有返回值，但是客户端仍然可以接受IBinder对象。这种生命周期的逻辑如下：</p>
 </article></body></html>

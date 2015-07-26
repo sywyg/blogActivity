@@ -1,0 +1,441 @@
+这是service的第二部分bound service。若第一部分没看的，请参考：
+
+
+bound service 相当于客户-服务器接口中的服务器。bound service 允许其它组件（除了broadcast receiver）绑定该service，然后进一步操作：发送请求，接收响应，甚至IPC。bound service 只有在其他组件绑定它时才处于存活状态，且会受到绑定它的组件影响。
+
+下面将具体介绍如何创建bound service等相关内容。
+
+#基本知识
+
+若service允许被别的组件绑定的话，我们必须实现`onBind()`方法，该方法将返回一个IBinder对象（在启动方式的service中该方法返回null），以便实现和客户端进行交互。
+
+客户端可以通过调用`bindService()`方法实现绑定，系统会调用服务的`onBind(Intent)`回调方法，返回一个用于和服务进行交互的 IBinder 对象。之后我们必须实现ServiceConnection接口接收IBinder对象，来监控客户端和服务之间的连接。绑定是异步进行的，`bindService()`将立即返回，并不会立即向客户端返回IBinder对象。但是我们可以通过ServiceConnection接口中的方法接收IBinder对象，完成通信。
+
+多个客户端可以绑定同一个service，但是只有第一个才会调用`onBind()`并检索IBinder对象。其它客户端直接接收相同的IBinder对象，而不再调用该方法。
+
+当最后一个客户端解绑service时，系统销毁该service，除非`startService()`方式启动的service。
+
+##绑定Started方式的service
+
+一个service可以同时started和绑定。若一个service可以同时被started和绑定，那么当service以started方式启动时，当所有客户端解绑时，系统不会销毁该service。而是必须通过`stopSelf()`或`stopService()`。
+
+尽管通常情况下只需要实现`onBind()`和`onStartCommand()`两者中的一个，但是有时候需要实现这两种方式。例如一个音乐播放器，当activity启动service时可以播放音乐，即使用户离开应用；当用户又回来时activity又可以绑定service，重新控制service。
+
+更多信息请看管理绑定的service生命周期（下面）。
+
+#创建Bound Service
+
+当创建bound Serivce时，我们必须提供一个IBinder对象，该对象提供了一个编程接口用于和客户端交互。有下列三种方式定义该接口：
+
+- 扩展Binder类
+    Binder类实现了IBinder接口，并非抽象类。
+    若service是应用程序私有的，且和客户端在同一个进程中，可以通过这种方式，一般的bound service都是这种方式。客户端得到Binder实例后可以直接使用该类的public方法，甚至可以使用service类的public方法。
+    当我们的service只服务于我们自己的程序时，这种是最好的选择。唯一不使用该方式的原因在于，service被其他应用使用或跨进程。
+- 使用Messenger
+    Messenger是final类，实现了Parcelable接口。
+    若接口要跨进程的工作的话，可以通过Messenger。这种方式，service定义了一个Handler来处理不同的Message对象。对于Messenger来说，Handler是基础，它能够和客户端共享Ibinder，运行客户使用Message发送消息到service。另外，客户端可以定义自己的Messenger来处理service回发的消息。
+    这是最简单也是最常用的方式实现IPC，因为Messenger把所有请求都放在一个线程中，因此不必担心线程安全问题。
+- 使用AIDL
+    AIDL是Android Interface Definition Language，翻译的话应该是android接口定义语言。AIDL将对象解析为操作系统可识别的数据类型（primitives，或者是原始形态），并将它们跨进程序列化（marshall）以完成IPC（AIDL performs all the work to decompose objects into primitives that the operating system can understand and marshall them across processes to perform IPC.）。使用Messenger也是基于AIDL的，Messenger把所有请求都放在一个线程中，service每次处理一个。然而对于AIDL实现来说。service可以同时处理多个请求（应该是并发处理）。这种情况下，你的服务必须拥有多线程处理能力，并且是以线程安全的方式编写的。
+    要直接使用AIDL，你必须创建一个`.aidl`文件，其中定义了编程接口。 Android SDK 工具使用此文件来自动生成一个抽象类，其中实现了接口及对IPC的处理，然后我们就可以在自己的服务中继承该类。
+
+注意：绝大多数应用程序都不应该用AIDL来创建Bound Service，因为这可能需要多线程处理能力并且会让代码变得更为复杂。因此，AIDL对绝大多数应用程序都不适用。
+
+注：关于marshalling维基上是这样解释的：In computer science, marshalling or marshaling is the process of transforming the memory representation of an object to a data format suitable for storage or transmission, and it is typically used when data must be moved between different parts of a computer program or from one program to another. Marshalling is similar to serialization and is used to communicate to remote objects with an object, in this case a serialized object. It simplifies complex communication, using custom/complex objects to communicate instead of primitives. The opposite, or reverse, of marshalling is called unmarshalling (or demarshalling, similar to deserialization).
+
+注：在四大基本组件中，BroadcastReceiver不能作为Bound Service的客户端。因为BroadcastReceiver的生命周期很短，当执行完`onReceive()`回调时，BroadcastReceiver生命周期完结。而Bound Service又与Client本身的生命周期相关，因此，Android中不允许BroadcastReceiver去`bindService()`，当有此类需求时，可以考虑通过`startService()`（四大组件Started Service 都是通过`startService()`）或者再绑定。
+
+下面详细讲解以上方法（AIDL单独介绍）。
+
+##继承Binder类
+
+如果只是在应用程序内部使用，并且不需要跨进程，我们可以通过这种方式直接进行交互。这种是最常见的方式。
+
+继承Binder类需要完成如下步骤：
+
+1. 在service类中，创建一个Binder对象，该对象可以：
+- 包含public方法，客户端直接可以调用；
+- 返回当前Service对象，该对象的public方法客户端可以调用；
+- 或者返回其它类的对象，该对象能够给客户端提供public方法。
+2. 通过在`onBind()`方法中返回该Binder对象。
+3. 在客户端通过ServiceConnection接口中的`onServiceConnected()`方法接收该Binder对象，然后就可以调用它的相关方法了。
+
+注意：*service和客户端必须在同一个应用程序的原因在于，客户端可以转换返回的Binder对象，然后调用相关方法；service和客户端必须在一个进程中的原因在于，这种方式不执行任何跨进程的序列化（marshalling）。*
+
+根据官方文档中的示例代码修改代码如下：
+
+```java
+
+/**
+ * bound service
+ * 通过继承Binder类.在同一进程中通信，并非IPC
+ * @author sywyg
+ * @since 2015.7.15
+ */
+public class LocalService extends Service {
+    private final String TAG = "result";
+    private final IBinder mBinder = new LocalBinder();
+    private final Random mGenerator = new Random();
+
+    public LocalService() {}
+
+    public class LocalBinder extends Binder {
+        //获得本地service对象，以便调用service中public方法
+        public LocalService getLocalService(){
+            Log.d(TAG,"getLocalService is executed ...");
+            return LocalService.this;
+        }
+        /**
+         * 模拟客户端要处理的LocalBinder中的public方法
+         * @return
+         */
+        public  void sayHello(){
+            Toast.makeText(getApplicationContext(),"hello service",Toast.LENGTH_LONG).show();
+        }
+
+    }
+
+    @Override
+    public void onCreate() {
+        super.onCreate();
+        Log.d("result","onCreate executed");
+    }
+
+    /**
+     * 绑定时调用
+     * @param intent 传递过来的intent
+     * @return 返回IBinder对象，传递给ServiceConnection实例处理
+     */
+    @Override
+    public IBinder onBind(Intent intent) {
+        Log.d("result","onBind executed");
+        return mBinder;
+    }
+
+    /**
+     * 解绑时调用
+     * @param intent
+     * @return
+     */
+    @Override
+    public boolean onUnbind(Intent intent) {
+        Log.d("result","onUnbind executed");
+        return super.onUnbind(intent);
+    }
+    @Override
+    public void onDestroy(){
+        super.onDestroy();
+        Log.d("result","onDestroy executed");
+    }
+
+    /**
+     * 模拟客户端要处理的service中的public方法
+     * @return
+     */
+    public int getRandomNumber(){
+        return mGenerator.nextInt(100);
+    }
+
+}
+
+```
+下面是一个绑定LocalService的activity，当点击按钮是回调`getRandomNumber()`:
+
+```java
+
+/**
+ * 绑定service练习
+ * @athor sywyg
+ * @since 2015.7.15
+ */
+
+public class BindingActivity extends Activity {
+    private final String TAG = "result";
+    private boolean mBound = false;
+    private LocalService mLocalService;
+    private LocalService.LocalBinder binder;
+    @Override
+    protected void onCreate(Bundle savedInstanceState) {
+        super.onCreate(savedInstanceState);
+        setContentView(R.layout.activity_bound_service);
+    }
+
+    @Override
+    protected void onStart() {
+        super.onStart();
+        // Bind to LocalService
+        //绑定服务
+        Intent intent = new Intent(this,LocalService.class);
+        bindService(intent,mConnection,BIND_AUTO_CREATE);
+    }
+
+    /** Defines callbacks for service binding, passed to bindService()
+     * 若onBind(Intent intent)方法不返回对象则不调用该ServiceConnection实例
+     */
+    private ServiceConnection mConnection = new ServiceConnection() {
+        //执行该方法表示绑定成功，并可以调用服务了。
+        @Override
+        public void onServiceConnected(ComponentName name, IBinder service) {
+            // We've bound to LocalService, cast the IBinder and get LocalService instance
+            binder= (LocalService.LocalBinder)service;
+            mLocalService = binder.getLocalService();
+            mBound = true;
+        }
+        @Override
+        public void onServiceDisconnected(ComponentName name) {
+            Log.d(TAG, "onServiceDisconnected...");
+            mBound = false;
+        }
+    };
+
+    public void onButtonClick(View v){
+        switch (v.getId()){
+            // 调用service方法
+            case R.id.btn_call_method:
+                // Call a method from the LocalService.
+                // However, if this call were something that might hang, then this request should
+                // occur in a separate thread to avoid slowing down the activity performance.
+                //若耗时则应在一个新的线程中运行
+                if(mBound){
+                    Toast.makeText(this,
+                            mLocalService.getRandomNumber() + "", Toast.LENGTH_LONG).show();
+                    binder.sayHello();
+                }
+                break;
+            // 解绑
+            case R.id.btn_bind:
+                if(mBound){
+                    unbindService(mConnection);
+                    mBound = false;
+                }
+                break;
+        }
+
+    }
+    @Override
+    protected void onStop() {
+        super.onStop();
+        //解绑
+        if(mBound){
+            unbindService(mConnection);
+            mBound = false;
+        }
+    }
+}
+
+
+```
+测试结果为：
+
+1. 继承Binder类方式可以在同一应用程序和进程中完成bound service和activity通信，在activity中可以调用LocalBinder类中的方法也可以调用LocalService中的方法。
+2. 执行`unBindService()`之后，service就会执行`onDestroy()`方法。
+3. 只通过bound方式的service不会调用`onStartCommand()`。
+4. 同一个客户端反复绑定不会出现任何错误，且只调用一次`onBind()；多个客户端绑定一个service只在第一次调用`onBind()`之后直接使用IBinder实例。
+
+可以看到通过上面这种方式可以实现同一进程间客户端（Client）和Bound Service之间的通信。
+局限：客户端与Service必须属于同一个进程，不能实现进程间通信（IPC）。否则会出现类似于`android.os.BinderProxy cannot be cast to xxx`错误。
+
+
+##使用Messenger
+
+如果需要远程通信，可以使用一个 Messenger 来提供服务的接口。这种技术能无需自定义AIDL就能进行进程间通信（IPC）。
+
+Messenger具体使用步骤如下:
+
+- service中实现一个Handler对象，用于客户端每次调用时处理消息;
+- 通过Handler对象创建一个Messenger对象;
+- Messenger创建一个IBinder对象，该对象通过`onBind()`方法返回给客户端；
+- 客户端使用IBinder对象实例化Messenger（这里指的是service的Handler对象），客户端通过该Handler对象将Message对象发送给service；
+- service通过Handler对象接收每个传递的Message，并在`handleMessage()`方法中处理；
+
+这种方式service没有提供给客户端任何方法，而是客户端传递消息（Message对象）给service。
+
+下面是一个简单的使用Messenger的serivce例子：
+
+```java
+
+/**
+ * 使用Messenger进行IPC
+ * @author sywyg
+ * @since 2015.7.15
+ */
+public class MessengerService extends Service {
+    private final String TAG = "result";
+    // 消息标记
+    private static final int MSG_SAY_HELLO = 1;
+    // 利用Handler对象创建messenger
+    private Messenger messenger = new Messenger(new IncomingHandler());
+
+    public MessengerService() {
+    }
+
+    /**
+     * Handler of incoming messages from clients.
+     * Handler处理客户端发送过来的消息
+     */
+    class IncomingHandler extends Handler {
+        @Override
+        public void handleMessage(Message msg) {
+            switch (msg.what) {
+                case MSG_SAY_HELLO:
+                    Toast.makeText(getApplicationContext(), "hello!", Toast.LENGTH_SHORT).show();
+                    break;
+                default:
+                    super.handleMessage(msg);
+            }
+        }
+    }
+    @Override
+    public IBinder onBind(Intent intent) {
+        Log.d(TAG,"onBind is executed ...");
+       return messenger.getBinder();
+    }
+}
+
+```
+为了测试，可以在AndroidManifest.xml文件中设置MessengerService新的进程，上一篇文章。
+
+所有的客户端都需要根据IBinder对象（service传递过来的）创建一个Messenger实例，然后可以通过`send()`发送Message对象。例如下面是一个简单的实现绑定service的例子：
+
+```java
+
+/**
+ * 使用Messenger进行IPC
+ * @author sywyg
+ * @since 2015.7.15
+ */
+public class MessengerService extends Service {
+    private final String TAG = "result";
+    // 消息标记
+    public static final int MSG_SAY_HELLO = 1;
+    // 利用Handler对象创建messenger
+    private Messenger messenger = new Messenger(new IncomingHandler());
+
+    public MessengerService() {
+        Log.d(TAG, android.os.Process.myPid() + " is MessengerService");
+    }
+
+    /**
+     * Handler of incoming messages from clients.
+     * Handler处理客户端发送过来的消息
+     */
+    class IncomingHandler extends Handler {
+        @Override
+        public void handleMessage(Message msg) {
+            switch (msg.what) {
+                case MSG_SAY_HELLO:
+                    Toast.makeText(getApplicationContext(), "hello!", Toast.LENGTH_SHORT).show();
+                    break;
+                default:
+                    super.handleMessage(msg);
+            }
+        }
+    }
+    @Override
+    public IBinder onBind(Intent intent) {
+        Log.d(TAG,"onBind is executed ...");
+       return messenger.getBinder();
+    }
+}
+
+```
+
+上面的例子实现了通过Messenger，客户端可以向service发送消息。但是service不能向客户端发送消息。
+
+若要实现service向客户端发送消息，则可以通过Message中的ReplyTo参数（Messenger类型）。上面的例子已经建立连接，因此可以通过相同的办法从service向客户端发送消息：
+
+- 创建本地Message处理类（Handler，和service端一样创建一个自定义Handler类）；
+- 在客户端通过ReplyTo参数将本地Messenger对象发送给service（通过service传递过来形成的Messenger对象的`send()`方法）；
+- 在service中将ReplyTo参数赋值给客户端Messenger对象，该对象可以通过`send()`方法给客户端发送消息；
+
+代码和上面的类似，不再贴。
+
+###Messenger和AIDL比较
+
+当需要执行IPC时，Messenger方法比AIDL方法简单的多，这是因为Messenger方法将所有的请求排成一列，而AIDL则是处理同时多个请求（能够处理多线程问题）。
+
+对于大多数应用不需要执行多线程，因此使用Messenger同一时刻只执行一个请求。当要执行多线程时，需要使用AIDL定义接口。
+
+#绑定service
+
+应用程序组件(客户端)能够通过`bindService()`绑定service。然后系统调用service的`onBind()`方法，该方法返回一个IBinder对象用于和service进行交互。
+
+绑定是异步的。`bindService()`会立刻返回，不会返回IBinder对象给客户端。为了接收IBinder对象，客户端必须创建一个ServiceConnection的实例并传递给`bindService()`。ServiceConnection包括一个回调方法，用于接收IBinder对象。
+
+注意：只有activities，services和content providers能够绑定service，broadcast receiver不能绑定。
+
+为了绑定serivce，我们必须完成以下内容：
+
+1. 实现ServiceConnection接口
+    必须覆盖两个回调方法：
+    `onServiceConnected()`
+    连接成功时通过这个方法接收`onBind()`传递的IBinder对象。
+    `onServiceDisconnected()`
+    意外断开连接时调用，例如当service崩溃或被杀死时。解绑时不会调用。
+2. 调用`bindService()`，并且传递ServiceConnection实例；
+3. 当系统调用`onServiceConnected()`方法时，可以使用接口中定义的方法（或客户端中的方法）和service进行通信；
+4. 调用`unBindService()`解除绑定。
+    当客户端被销毁时，它将解绑service，但是我们应该当完成交互时或当客户端暂停时解绑，这样，service能够在不用时停止。
+
+上面的例子都给出了具体的实现，这里不再赘述。
+
+有了ServiceConnection对象之后，客户端可以通过下列方法绑定service：
+
+```java
+
+Intent intent = new Intent(this,LocalService.class);
+bindService(intent,mConnection,Context.BIND_AUTO_CREATE);
+
+```
+
+`bindService()`方法参数分别为：
+
+- 显式启动service的intent(隐式的也可以);
+- ServiceConnection接口的实现实例;
+- 标记，用于指示绑定的选择，BIND_AUTO_CREATE表示在service没启动时自动启动，还可以有其它值： BIND_DEBUG_UNBIND（调试解绑时的问题）BIND_NOT_FOREGROUND（阻止当前service的进程提高优先级），0 （none）。
+
+##其它信息
+
+关于绑定还有下面一些重要的提示：
+
+- 需要在连接断开时捕获DeadObjectException异常。这是远程方法中抛出的唯一异常。
+- 对象是跨进程计数的引用（Objects are reference counted across processes.），也就是说可能导致内存泄漏
+- 绑定和解绑要在合适的位置进行：
+    
+    - 若只有当activity可见时才和service进行交互，则须在`onStart()`方法中绑定，在`onStop()`中解绑；
+    - 若即使activity停止（未销毁）时，我们仍想要activity接收响应，则我们可以在`onCreate()`中绑定，在`onDestroy()`中解绑。此时就要多加小心：当前activity需要在整个生命周期中使用service，因此若service在另一个进程中，这种方式增加了该进程被系统杀死的可能性。
+
+关于第二点，stackoverflow上有这样的回答：
+if you use this type of interprocess communication you can never be sure that your objects will be garbage collected, even when your application shuts down, unless the application you are communicating with also shuts down and that application has not communicated in the same way with any other application (which again you can never be sure of unless its yours).
+若按照他的意思应该是内存泄漏，但是作者也说了他不确定。
+
+注意：不要在activity中的`onResume()`中绑定和在`onPause()`中解绑，这是因为两个方法会在每次生命周期转换的过程中，应该将这些处理在转换时降到最低。同时，若多个activities中绑定了同一个service，并且在这些acitivities中相互转换的话，service会被频繁地销毁重建（在停止时解绑然后被销毁，该动作发生在另一个activity绑定它之前）。
+
+#管理生命周期
+
+当service被所有客户端解绑时，系统销毁该service，除非该service先是被started方法的。因此对于存粹绑定的service我们无需管理它的生命周期--系统基于是否绑定客户端来管理。
+
+
+若先绑定再启动，会执行`onStartCommand()`方法，不会执行`onCreate()`方法（绑定时已执行过），关于同时绑定和启动的service何时销毁有下面几种:
+
+- 在解绑之前调用`stopSelf()`或`stopService()`不会销毁service；在调用`stopSelf()`或`stopService()`之后再解绑会销毁service。
+- 在解绑之后调用`stopSelf()`或`stopService()`会销毁service。
+
+一句话总结：要开始就得结束，要绑定就得解绑，这样才能销毁service。
+官网上有下面这样一段：
+
+However, if you choose to implement the onStartCommand() callback method, then you must explicitly stop the service, because the service is now considered to be started. In this case, the service runs until the service stops itself with stopSelf() or another component calls stopService(), regardless of whether it is bound to any clients.
+若你实现了`onStartCommand()`方法，则此时service被认为是sstarted方式的，因此我们必须管理它的生命周期。在这种情况下，无论是否绑定了客户端，只要调用了stop方法就会service停止。
+
+经过我的测试，我发现不存在这种情况。是不是我的理解问题，请大神帮忙看一下。。。
+
+此外，如果service是started方式，然后被绑定，那么当系统调用`onUnbind()`方法时，如果我们想要接收`onRebind()`方法的回调（下一次客户端绑定该service）而不是接收`onBind()`方法的回调，则我们可以`onUnbind()`返回true。`onRebind()`方法没有返回值，但是客户端仍然可以接受IBinder对象。这种生命周期的逻辑如下：
+
+
+
+
+
+
+
+
+

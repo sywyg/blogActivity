@@ -1,0 +1,318 @@
+本文翻译自android官方文档，结合自己测试，整理如下。
+
+content provider管理数据的访问，我们可以在自己的应用程序中实现一个或多个自定义的provider（通过继承抽象类ContentProvider），当然这些provider需要在manifest文件中注册。尽管content provider是用来为其它程序来访问数据的，但是在自己程序中的activities显然可以对这些数据进行处理。
+
+#创建provider之前注意事项
+
+确定是否需要提供content provider。若有以下一种或多种需求的话需要创建content provider：
+
+- 想提供给其他程序复杂的数据或文件；
+- 想允许用户将复杂的数据从我们的程序复制到另外的程序中；
+- 想使用查询框架提供自定义查询建议。
+
+若在程序内部使用SQLite数据库，则不需要provider。
+
+接下来，通过下列步骤创建provider（先简单的总结，后续详细介绍）：
+
+1. 为数据设计存储方式，content provider提供两种方式：
+
+- 文件数据
+	数据保存在文件中，例如图片，视频，音频等。这些文件存储在私有的空间，provider可以提供外部程序访问。
+- 结构化的数据
+	这样的数据通常保存在数据库，数组，或者相似的结构中，当然可以把这些数据以兼容的方式保存在表中。表中的一行表示一个实体（记录），一列表示实体相关属性的取值。通常这些数据保存在SQLite数据库中，当然也可以永久地保存。
+
+2. 需要继承抽象类ContentProvider，并且覆盖必要的方法。这个类是我们的数据和其他程序交互的接口。
+3. 定义provider的权限（authority），内容URIs和列名。若程序想要处理intents，则还必须定义intent的action，extra data和flags。同样需要定义其它程序想要访问该provider必须请求的许可（permission）。通常可以考虑把这些值定义为常量并定义在另一个类中。
+4. 添加额外的信息。
+
+#设计数据存储
+
+在提供provider之前，我们必须要确定我们的数据该如何存储，当然存储方式我们可以任意指定，然后再针对该存储方式设计provider。
+
+有下列几种存储方式：
+
+- 存储在SQLite数据库中。这种方式我们不是必须要使用一个数据库，provider对外表现为一组表，因此不需要内部实现相关的数据库。
+- 存储在文件中。
+- 存储在网络中。
+
+##注意事项
+
+- 表数据通常需要主键，provider为每行赋值一个唯一的数值。尽管主键这一列可以任意名称，但是推荐使用`BaseColumns._ID`，这样的话，在ListView就能很方便的检索。
+- 若提供位图或者更大的文件数据的话，这些数据会保存在文件中，以间接地方式提供。若是使用这些数据的话，我们应该通知客户端它们应该使用ContentResovler类中的文件方法来获取这些数据。
+- 存储BLOB数据类型的话大小或结构会发生变化。
+
+#设计内容URIs
+
+内容URI是能够识别provider中数据的URI，包括权限（authority）和路径（path）。权限找到provider，路径找到表或文件。还可以有一个id，能够表示某一行。
+
+##设计权限authority
+
+权限用于区分不同程序，一般为了避免冲突，都会采用包名的形式命名。例如包名为：`com.example.sywyg`，则该权限就可以为：`com.example.sywyg.provider`。
+
+##设计路径path
+
+URI是权限加路径的方式来查找指定的表。路径是区分同一程序中表或者其它形式（例如文件）的，可以直接添加在权限后面。例如table1和table2，则形成的URI分别为：`com.example.sywyg.provider/table1`和`com.example.sywyg.provider/table2`。
+
+最后内容URI需要在权限和路径前加上`content://`表示内容URI。例如，一个标准的内容URI写法如下：`content://com.example.sywyg.provider/table1`。
+
+##处理URI的ID
+
+将ID追加到URI后面的话就可以检索到表中的指定的行，ID对应的列名为_ID。
+
+##URI模式匹配
+
+UriMatcher类映射内容URI模式到一个integer类型数，我们可以使用该值进行模式匹配。
+
+URI模式通过通配符匹配：
+
+- *：匹配任意长度和有效的字符串；
+- #：匹配任意长度的数字字符；
+
+假设权限为：`com.example.app.provider`，识别下面的URI对应的表：
+
+`
+content://com.example.app.provider/table1: 表为 table1.
+content://com.example.app.provider/table2/dataset1: 表为 dataset1.
+content://com.example.app.provider/table2/dataset2: 表为 dataset2.
+content://com.example.app.provider/table3: 表为 table3.
+
+`
+
+若带有ID同样可以识别：
+`content://com.example.app.provider/table3/1` 表table3中的第1行
+
+下面的URI模式：
+`content://com.example.app.provider/*`
+匹配provider中的任意URI
+
+`content://com.example.app.provider/table2/*`将会匹配表dataset1和dataset2，但是不会匹配table1或table3。
+
+`content://com.example.app.provider/table3/#`将会匹配table3中的任意行。
+`content://com.example.app.provider/table3/6`将会匹配table3中的第6行。
+
+总结起来，URI标准就是：content://<authority>/<path>或content://<authority>/<path>/<id>，前者针对表，后者针对指定行。
+
+我们可以借助UriMatcher类快速实现内容URI的匹配。常用代码如下：
+
+```java
+
+public static UriMatcher mUriMatcher = new UriMatcher(UriMatcher.NO_MATCH);
+mUriMatcher.addURI(authority,path,customMatch);
+
+```
+
+`addURI()`能够将字符串authority和字符串path解析为：`content://<authority>/<path>`（这里的path中可以带有id），然后通过`match(URI)`方法进行匹配字符串customMatch，`match(URI)`返回的就是`addURI()`中的第三个参数，利用这个参数就可以响应调用者期望访问的数据。
+
+其它的类，如ContentUris，Uri和Uri.Builder。ContentUris可以方便的在uri后面添加id，Uri和Uri.builder能够方便的解析Uri对象以及生成新的Uri对象。
+
+#继承ContentProvider类
+
+ContentProvider类能够管理我们provider中的数据，外界通过ContentResovler可以调用对应的ContentProvider方法实现操作数据。因此，我们必须要提供相应的方法来操作数据。
+
+##覆盖方法
+
+我们需要实现以下方法，才能方便ContentResovler访问数据。
+
+1. `query()`
+	检索数据，返回Cursor对象。
+2. `insert()`
+	插入一行数据，返回新插入行的URI。
+3. `update()`
+	更新存在的某行，返回更新的行号。
+4. `delete()`
+	删除存在的某行，返回删除的行号。
+5. `getType()`
+	返回对应URI的MIME类型。
+6. `onCreate()`
+	初始化provider。当创建provider对象时，就会立即调用。注意只有ContentResovler对象试图访问数据时才会创建provider对象。
+
+可以看到对于上述几个操作数据的方法，在ContentResovler有同样名称的方法。
+
+在覆盖方法时需注意一下几点：
+
+- 除了`onCreate()`之外的方法都要注意多线程安全问题。
+- 避免在`onCreate()`进行长时间的操作。直到需要时再初始化对应的内容。
+- 尽管我们需要实现这些方法，但是除了返回值外，我们可以不用做任何事。例如我们不希望外界删除数据，因此我们只需要返回对应的行号，而不在方法中写任何代码。
+
+###实现`query()`方法
+
+该方法会返回一个Cursor对象，或者失败的话抛出异常。若没有查到对应的行则应该返回一个`getCount()`方法为0的Cursor对象。只有在内部出现错误是才返回null。若使用SQLite数据库保存数据的话，可以直接调用SQLiteDatabase类的`query()`方法返回Cursor对象。若不使用的话，就要使用Cursor类的具体子类。
+
+在查询时可能会抛出下列异常：
+
+- IllegalArgumentException（当接收到无效URI时）
+- NullPointerException
+
+若访问的是SQLite数据库，则`query()`简单实现代码如下：
+
+```java
+
+public class ExampleProvider extends ContentProvider {
+    private static final UriMatcher sUriMatcher;
+    sUriMatcher.addURI("com.example.app.provider", "table3", 1);
+    sUriMatcher.addURI("com.example.app.provider", "table3/#", 2);
+    // 参数为ContentResovler调用query()方法传递过来的
+    public Cursor query(
+        Uri uri,
+        String[] projection,
+        String selection,
+        String[] selectionArgs,
+        String sortOrder) {
+        switch (sUriMatcher.match(uri)) {
+        	// 对应table3
+            case 1:
+                if (TextUtils.isEmpty(sortOrder)) sortOrder = "_ID ASC";
+                break;
+            // 对应带有id的table3
+         	case 2:
+             	selection = selection + "_ID = " uri.getLastPathSegment();
+                break;
+            default:
+           		throw new IllegalArgumentException("Unknown URI " + uri);  
+      }
+        // 实际查询SQLite数据库语句
+
+    }
+
+```
+
+###实现`insert()`方法
+
+插入方法将新的一行添加到指定的表中，数据来自于参数ContentValues 传递的数据，若某一列没有指定，则提供默认值（该默认值取决于provider或数据库本身）。
+
+该方法会返回新行的URI。我们可以通过ContentUris的`withAppendId()`方法在URI后添加主键ID（通常是_ID）来构建该URI。直接通过`parse()`方法也行。
+
+###实现`update()`方法
+
+和插入类似，不再介绍。
+
+###实现`delete()`方法
+
+删除指定的行。该方法不需要真的删除某行，若我们使用同步适配器的话，可以考虑先把要删除的数据进行标记删除。该同步适配器可以在从provider中真的删除数据之前能够检查出删除的行，并把这些排除，实现假删除。
+
+###实现`getType()`方法
+将在下面部分详细讲解。
+
+###实现`onCreate()`方法
+
+当创建provider时，系统调用`onCreate()`方法。我们应该保证在这里初始化的内容是必须的且能够快速执行，对于不是必须的且耗时的可以在需要时再初始化。例如数据库创建以及数据加载可以在真正请求操作数据时再执行。若太耗时的话，provider启动就会耗时，显然这会影响回应请求该provider的程序。
+
+#ContentProvider的MIME类型
+
+ContentProvider有两个方法能返回类型：
+
+- `getType()`
+	这个需要在子类中实现
+- `getStreamTypes()`
+	若provider提供文件访问的话，就需要实现这个。
+
+##表的MIME类型
+
+`getType()`方法返回一个MIME格式的字符串，用来描述参数URI对应的 数据类型。参数Uri可以匹配一个模式而不是指定的URI，这样我们应该返回和匹配模式的URIs相关的数据类型。
+
+对于常见的类型：text,HTML,JPEG，`getType()`方法应该返回标准的MIME类型。
+
+对于指定一行或多行的URIs，`getType()`方法应该返回android指定的MIME格式：
+
+- 类型部分：vnd
+- 子类型部分：
+	- URI模式只有一行：android.cursor.item/
+	- URI模式有多行：android.cursor.dir/
+- Provider指定部分：vnd.<name>.<type>
+	name应该是全局唯一的，type应该是对应URI模式唯一的。通常，name应该是包名，type应该是和URI相关的表名。
+例如，provider权限为`com.example.app.provider`,表名为：table1，则table1多行的MIME类型为：
+`vnd.android.cursor.dir/vnd.com.example.provider.table1`
+单行的MIME类型为：
+`vnd.android.cursor.item/vnd.com.example.provider.table1`
+
+##文件的MIME类型
+若provider提供文件的话，需要实现`getStreamTypes()`方法。该方法返回一个MIME类型的字符串数组，根据给定的URI。我们应该根据MIME类型过滤参数过滤MIME类型，以便返回客户端想处理的MIME类型。
+
+例如，provider提供图片文件：.jpg,.png和.gif格式。若一个程序调用了`getStreamTypes()`使用过滤参数image/*，那么该方法就会返回：
+`{ "image/jpeg", "image/png", "image/gif"}`
+若程序只需要.jpg的话，可以使用过滤参数*\/jpeg，则方法返回：
+`{"image/jpeg"}`
+若provider不提供类型的话，方法返回null。
+
+#实现相关类
+
+一般需要一个public final类型的相关类来定义常量：URIs，列名，MIME或者其他和provider相关的信息。该类使provider和其它程序建立一种关系，能够确保provider被正确地获取。
+
+对于其他程序来说，可以通过我们提供的.jar文件来操作这个相关类，进而实现操作provider。
+
+#实现Content Provider许可
+
+需要注意一下几点：
+
+- 默认情况下，存储在设备内存（并不是运行内存）数据文件是我们程序和provider私有的。
+- SQLite数据库是我们程序和provider私有的。
+- 默认情况，保存在存储卡上的数据是公有的都可以访问。我们不能使用provider限制该数据的访问权限。
+- 打开或创建存储内存上的一个文件或SQLite数据库的方法调用潜在地授予了其它程序读写这些数据的权限。若是使用存储内存上的数据作为provider的数据集的话，其它程序都有读写的权限，而我们在manifest设置的将不起作用。默认的获取数据是私有的，不应该改变。
+
+若我们想使用content provider权限控制数据的读取，我们需要把数据存储在内部文件，SQLite数据库或服务器中，并且确保这些文件和数据库是私有的。
+
+##实现许可
+
+默认情况下，provider没有设置许可，所有的程序都能获取provider数据。我们可以在mainfest文件中`<provider>`标签的属性或子标签配置。许可可以针对整个provider或者特定的表或者特定的记录配置。
+
+声明许可使用`<permission>`标签，例如：
+`<permission android:name="com.example.app.provider.permission.READ_PROVIDER">`
+
+下面描述了provider的详细许可设置：
+
+- 单个provider读写许可（Single read-write provider-level permission）
+	该许可是控制整个provider的读写许可。在`<provider>`标签中的`android:permission`属性中设置。
+- provider级别分开的读或写权限（Separate read and write provider-level permission
+）
+	在`<provider>`标签中的`android:readPermission`属性中设置读许可；在`<provider>`标签中的`android:writePermission`属性中设置写许可。这两个许可优于android:permission设置的许可。
+- 路径级别的许可（Path-level permission）
+	读或写或读写指定URI的许可。在`<provider>`标签中的`<path-permission>`子标签中设置。该级别权限优于上面的两个许可。
+- 临时许可（Temporary permission）
+	授予程序临时获取数据的许可。
+	在`<provider>`标签中的`android:grantUriPermissions`属性中设置，或者在`<provider>`标签中的`<grant-uri-permission>`子标签中添加一个或多个。
+	若使用了临时许可，每当从provider移除对一个URI的支持时，必须调用`Context.revokeUriPermission()`，该URI和临时许可相关。若该属性设置了true，则系统支持授权临时许可，且会覆盖其它任何许可（provider级别或路径级别的）。
+	若设置了false，就需要在`<provider>`标签中的`<grant-uri-permission>`子标签中添加一个或多个。每一个子标签指定一个或多个URIs有临时被访问的许可。
+
+	为了在一个程序中委托临时访问许可，intent必须包含`FLAG_GRANT_READ_URI_PERMISSION`和`FLAG_GRANT_WRITE_URI_PERMISSION`中的一个或两个flags（通过`setFlags()`设置）。
+
+	若没设置`android:grantUriPermissions`属性，则被认为是false。
+
+#`<provider>`标签
+
+我们知道四大组件都需要在mainfest文件中配置，ContentProvider的实现类通过`<provider>`标签配置。该标签中还包括一些重要的属性和子标签：
+
+- `android:authorities`
+	用于在这个系统中识别provider（先识别应用程序）。
+- `android:name`
+	ContentProvider的实现类类名。
+- Permission
+	上面已经详细描述，主要包括：
+
+		- `android:grantUriPermssions`;
+		- `android:permission`;
+		- `android:readPermission`;
+		- `android:writePermission`。
+
+- 启动和控制属性
+
+	- `android:enabled` 是否允许实例化
+	- `android:exported` 外部是否能使用
+	- `android:initOrder` integer值，表示在同一个进程中被初始化的顺序，值越大越早被初始化
+	- `android:multiProcess` 是否允许在多个进程中实例化
+	- `android:process` 所在的进程
+	- `android:syncable` 
+
+- 信息属性
+
+	- `android:icon` 图标
+	- `android:label` 名称
+
+#总结
+
+ContentResovler和ContentProvider之间的协作关系以查询SQLite数据库为例进行描述:
+
+ContentResovler对象的`query()`方法中的参数URI，通过URI中的权限authority可以找到对应的ContentProvider实现类，对该类实例化并调用`query()`方法，在`query()`方法中通过`UriMatcher.match()`方法匹配Uri，匹配成功后交给SQLite数据库的查询方法，并返回Cursor，然后通过ContentProvider实例返回该Cursor给调用者。可以看到通过权限可以确定一个provider的，因此一个程序中可以包含多个providers。
+
+遗留问题：
+
+- 多线程安全问题。

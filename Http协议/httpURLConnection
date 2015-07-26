@@ -1,0 +1,99 @@
+(1)
+httpclient啥时候被弃用的，，，，
+本文翻译自android官方文档，经验证整理如下。
+
+#概述
+
+HttpURLConnection是继承抽象类URLConnection的一个子抽象类，一个HTTP协议通信的URLConnection能够在网络上发送和接收数据，数据类型不受限制。HttpURLConnection也可以接受或发送长度未知的数据流。
+
+HttpURLConnection进行HTTP通信的步骤如下：
+
+1. 通过`URL.openConnection()`获取HTTPURLConncetion实例，当然这需要强制转换为该实例；
+2. 准备请求。请求的主要内容是URI；
+3. （可选择地）加载请求体。如果需要包含请求体的话实例必须通过`setDoOutput(true)`配置。通过`getOutputStream()`将数据发送。
+4. 读取响应。响应头一般包括metadata数据，如请求体内容类型和长度，数据和session等。通过`getInputStream()`获取响应体，若没有响应体的话返回空输入流。
+5. 断开连接。一旦响应体被获取之后HttpURLConnection 应该通过`disconnect()`断开连接，释放资源。
+
+例如下面代码：
+
+```java
+
+public void test(){
+		URL url = null;
+		HttpURLConnection connection = null;
+		BufferedInputStream bis = null;
+		BufferedOutputStream bos = null;
+		try {
+			// 创建URL对象
+			url =  new URL("http://fanyi.baidu.com/");
+			// 获取 HttpURLConnection对象
+			connection = (HttpURLConnection) url.openConnection();
+			// 若要向服务器端发送数据则需调用下面的方法
+			connection.setDoOutput(true);
+			// 获取输入流
+			bis = new BufferedInputStream(connection.getInputStream());
+			// 获取输出流
+			//bos = new BufferedOutputStream(connection.getOutputStream());
+			
+			// 读取数据
+			int length = 0;
+			byte[] temp = new byte[1024];
+			while ((length = bis.read(temp,0,temp.length)) != 0){
+				System.out.println(new String(temp,0,temp.length));
+			}
+		} catch (MalformedURLException e) {
+			e.printStackTrace();
+		} catch (IOException e) {
+			e.printStackTrace();
+		} finally {
+			try {
+				// 释放资源
+				bos.close();
+				bis.close();
+				connection.disconnect();
+			} catch (IOException e) {
+				e.printStackTrace();
+			}
+		}
+
+	}
+
+```
+
+#响应处理
+
+若响应出现错误的情况下，`getInputStream()`会抛出IOException，可以通过`getErrorStream()`（返回IntputStream类型）获取错误异常。头文件可以正常的通过`getHeaderFields()`获取。
+
+#提交内容
+
+为了能够给服务器上传数据，需要配置`setDoOutput(true)。为了最佳性能，当发送的内容长度知道是应该调用`setFixedLengthStreamingMode(int/long)`设置长度，或者在不知道长度的情况下设置`setChunedStreamingMode(int)。否则，在被传输前，HttpURLConnection将请求体缓存在内存，导致浪费内存甚至全部占有，也会增加延迟。
+
+#性能
+
+该类的输入输出不会缓存。因此调用者通常需要通过` BufferedInputStream or BufferedOutputStream`处理流。只有大量的读写操作才可能不用缓冲。
+当进行大量的数据传输的时候，在内存中流应该限制一次读写的容量。除非我们需要一次性读写整个内容体（作为一个流处理，而不是先保存在数组或String中）。
+
+file:///D:/docs/reference/java/net/HttpURLConnection.html
+
+
+
+
+
+
+
+下面的都要扩充！！！！！！！！！！！！！！
+URL：
+file:///D:/docs/reference/java/net/URL.html
+URLConnection
+file:///D:/docs/reference/java/net/URLConnection.html
+HttpsURLConnection：
+file:///D:/docs/reference/javax/net/ssl/HttpsURLConnection.html
+
+
+
+
+
+
+
+
+#更安全的HTTP通信

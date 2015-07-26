@@ -1,0 +1,12 @@
+#service被系统killed的情况
+系统会在内存不足时强制杀死该service，以保证当前获得焦点的activity能够获得系统资源。若绑定service的activity处于运行状态，则不太可能销毁该service，同时若该service被声明为前台service（run in the foreground，稍后讨论），则它最不可能被杀死。否则，started service运行时间越长，被销毁的概率越大（运行时间越长所在后台任务中的位置越低，越容易被销毁）。因此，如果我们需要启动service的话，最好要设置好如何通过系统重新启动该service。如果系统销毁了service，系统通过`onStartCommand()`方法的返回值判断是否要重新启动该service。
+
+android系统企图维持保存service（started的货绑定的）进程尽可能长的时间。当内存不足需要kill进程时，下面几种情况，保存service的进程生存的概率会提高：
+
+- 当service在执行`onCreate(), onStartCommand(), or onDestroy()`代码时，宿主进程将会变成前台进程，以确保这些方法能够在被kill之前运行完；
+- 若service已经启动，宿主进程重要性要低于正在用户屏幕上显示的进程低，但是比其它不可见的进程要高。通常只有少说的进程可见，这就意味着该service不会被杀死，除非内存严重不足。然而，由于用户没有直接感觉到后台service的存在，因此，该service（宿主进程）会是一个被kill的候选对象，我们要防止好这种情况发生。运行时间越长被杀死的概率越大，运行的时间足够长的话，肯定会被kill。
+- 若客户端绑定一个service，那么该service的宿主进程的重要性比该客户端的进程重要（比最重要的客户端还要重要）。即，若其中绑定service的一个客户端处于可见状态，则service被认为是可见的（重要的）。客户端的重要性影响service的重要性会根据下面的参数调整：`BIND_ABOVE_CLIENT, BIND_ALLOW_OOM_MANAGEMENT, BIND_WAIVE_PRIORITY, BIND_IMPORTANT, and BIND_ADJUST_WITH_ACTIVITY`。
+- 可以通过`startForeground(int, Notification)`设置一个service为前台service，这种情况下，系统会认为service正和用户进行交互，当内存不足时不会被kill。尽管理论上是有可能在内存严重不足时该前台service被kill，但是实际上这种情况往往不会发生。
+- 当有其他组件在该进程中，该进程的重要性当然会比只有service一个的重要。
+
+上面情况就说明了，在内存严重不足时，service可能会被kill，因此要做好准备如何处理这些情况。可以通过`onStartCommand()`的返回值决定后续是否在执行以及如何执行service。

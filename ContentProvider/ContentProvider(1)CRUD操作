@@ -1,0 +1,352 @@
+
+本文翻译自android官方文档，结合自己测试，整理如下。
+
+Content providers能够管理结构化的数据集，封装数据，并且能够提供数据安全的机制。Content providers是一种标准的接口，能够跨进程数据共享。中文可以被称为内容提供器。
+
+当我们想从content providers中获取数据时，我们可以使用ContentResolver对象最为客户端访问该providers。ContentResolver对象能够和Content Provider实例进行通信，该实例是继承抽象类ContentProvider类的一个子类的实例。Content Provider接收来自客户端（ContentResolver对象）的请求数据，执行请求动作，返回请求结果。
+
+若我们不打算和其他应用程序进行共享数据，则我们没有必要创建自己的content provider。若有这种打算的话，需要提供content provider，以便提供个性化的查询建议。同时，若你想从你的程序中复制粘贴复杂的数据或文件到其他程序的话，我们也应该提供content provider。
+
+Android系统自身也包括管理视频，音频，图片，联系人等的content providers。我们的应用程序可以在满足条件的情况下使用这些content providers。
+
+#Content Provider基础
+
+Content Provider是android应用程序的一部分，同样能够提供和数据交互的UI。然而，content providers主要用于被其它程序使用的。providers和providers客户端为数据提供了一个一致的标准的接口，可以处理跨进程通信和安全访问数据。
+
+本章节中主要描述以下内容：
+
+- content provider运作机制。
+- 在通过contentprovider访问数据时，我们可以使用的API。
+- 在contentprovider中我们可以使用的API。
+- 其它关于方便操作provider的API。
+
+#概述
+
+content provider可以通过一个或多个表将数据暴露给其他应用程序，该表类似关系数据库中的表。表中的一行表示一条数据记录，每一列表示该记录的一个类型取值。这个不用过多描述。
+
+注意： provider不需要提供主键，但是若想和ListView关联时，必须提供一个名为_ID的主键。下面将有详细的介绍。
+
+##访问provider
+
+应用程序通过抽象类ContentResovler对象访问content provider中的数据，该ContentResovler对象和ContentProvider对象有同名的方法，能够对持久化存储数据进行CRUD(create,retrieve,update,and delete)。
+
+在客户端程序进程中的ContentResovler对象和在拥有provider的程序中的ContentProvider对象自动处理跨进程通信。ContentProvider对象也作为数据集和数据的外部表现的抽象层。
+
+当然，若要访问provider，必须要有相应的许可（permissions）。下面有详细介绍。
+
+例如，若要查询provider表中的数据，我们可以调用`ContentResolver.query()`，然后该方法就会调用ContentProvider实现类对象的`query() `方法。例如下面代码：
+
+```java
+
+// 在Activity中直接调用getContentResovler()方法获取ContentResovler实例
+Cursor mCursor = getContentResovler().query(
+    uri,
+    mProjection, // 字符串数组，可设置为null，表示读取所有列
+    mSelectionClause, // 字符串约束条件，可设置为null没有约束
+    mSelectionArgs, // 字符串数组，是约束条件的具体取值，
+    mSortOrder); // 字符串
+
+```
+
+关于返回的Cursor对象下面有详细的讲解，暂时不管。下面的表格中展示了`query()`方法中的参数如何匹配SQL SELECT语句：
+
+|参数|对应SQL部分|描述|
+|----|-----------|----|
+|Uri|FROM table_name|指定查询应用程序下的table_name表|
+|mProjection|select column1,column2...|指定查询的列名|
+|mSelectionClause|WHERE column1 = value|指定查询的where约束条件|
+|mSelectionArgs|-|为where中的占位符提供取值|
+|mSortOrder|ORDER BY column1,column2...|指定查询结果的排序方式|
+
+##内容URIs
+
+内容URI给内容提供器中的数据建立一种唯一的标识符，主要包括权限（aythority）和路径（path）两部分。权限是标识provider名称，用作区分应用程序的provider；路径则是表的名称，用于区分程序中不同的表。这样就形成了内容URI。例如一个provider的名称为：`com.sywyg.provider`，一个表名为：`table1`。则最终的URI字符串为：`content://com.sywyg.provider/table1`。其中`content://`为协议，表示该URI为内容URI。在得到URI字符串之后，可以通过，下面的方法将其解析为Uri对象：
+`Uri uri = Uri.parse("content://com.sywyg.provider/table1");`
+
+大多数providers可以通过指定ID访问某一单行例如(访问第二行)：
+`Uri uri = ContentUris.withAppendedId("content://com.sywyg.provider/table1",2);`
+
+注意：Uri和Uri.Builder类能够方便的通过字符串构造标准格式的Uri。而ContentUris类则能够方便地向URI中添加id，例如上面的例子。
+
+#从provider中检索数据
+
+这部分将描述如何从provider中检索数据。
+
+为了方便描述，将`ContentResolver.query() `查询方法写在UI线程中，但是在实际中，应该在子线程中进行异步查询。想要在子线程中实现的方法之一是使用CursorLoader类（目前还未整理）。这一部分在官方文档的activity下面的Loader有详细的讲解，目前还未整理。
+
+从provider中检索数据需要完成以下两步：
+
+1. 请求provider的访问许可（permission）；
+2. 发送给provider查询请求。
+
+##请求权限
+
+若要检索/查询数据，需要有`read access`许可，我们不能在程序运行时设置许可。因此，必须在manifest配置文件中指定该许可，通过`<uses-permission>`标签设置该provider定义的权限。
+例如我们想要获取联系人信息，则可以在我们的程序中manifest文件中：
+
+`<uses-permission android:name="android.permission.READ_CONTACTS"/>`
+
+##构建查询语句
+
+通过上一步设置许可之后，我们就可以对provider中的表进行查询了。通过ContentResolver对象的`query()`方法设置具体的查询语句，上面已经详细地讲过`query()`的使用。
+
+##处理恶意输入
+
+在操作数据时，小心SQL注入。例如输入一个`query()`方法中的参数`mSelectionClause`设置为：
+`String mSelectionClause =  "var = " + mUserInput;`
+这样的话，就有可能导致恶意的SQL攻击，例如`mUserInput`被赋值为`"nothing;DROP TABLE *;"，那么provider就有可能把所有的表都删除。
+
+因此，我们应该通过占位符来给约束条件赋值，通过这种方式，占位符给出的值只作为查询的条件，而不会进行连接到SQL语句中。例如上面的输入可以通过下面这种方式：
+
+```java
+
+String mSelectionClause =  "var = ?";
+String[] selectionArgs = {""};
+selectionArgs[0] = mUserInput;
+
+```
+其中，selectionArgs为`query()`的第四个参数。
+
+即使provider不依赖SQL数据库，上述通过占位符指定的方式也是可以的。
+
+##显示查询结果
+
+`query()`方法返回一个Cursor对象，这样我们就可以从Cursor中读取查询结果了。provider可能会限制访问特定的列，因此，可能导致访问不了特定的列。若查询结果为空的话Cursor中的方法`getCount()`为0。若查询出现错误，结果会依赖于特定的provider，有的可能返回null，有的抛出异常。
+
+由于Cursor是一行一行的，因此通过SimpleCursorAdapter将数据显示在ListView上是一个不错的选择。若要在ListView上显示，表中必须要有id列，ListView通过id检索。因此，通常来说providers需要提供id列。
+
+##从查询结果中获取数据
+
+我们知道`query()`的返回一个Cursor对象，我们可以从该对象中获取想要的数据。通过移动游标的方法遍历Cursor的所有行，示例代码如下：
+
+```java
+
+// 确定列号，即要信息的列
+int index = mCursor.getColumnIndex("column1");
+
+/*
+ * Only executes if the cursor is valid. 
+ * 只有当cursor非空才执行
+ */
+
+if (mCursor != null) {
+    /*
+     * Moves to the next row in the cursor. Before the first movement in the cursor, the
+     * "row pointer" is -1, and if you try to retrieve data at that position you will get an
+     * exception.
+     * 移动到下一行，行号是从-1开始的，因此第一次移动到第0行。
+     */
+    while (mCursor.moveToNext()) {
+
+        // 读取index列中的数据
+        newWord = mCursor.getString(index);
+
+        // Insert code here to process the retrieved word.
+        ...
+        // end of while loop
+      }
+    mCursor.close();
+  } else {
+    // Insert code here to report an error if the cursor is null or the provider threw an exception.
+  }
+}
+
+```
+
+`moveToNext()`方法将光标移动到下一行，然后通过`getXXX(int)`就能获取对应列的行取值（是不是像迭代器Iterator的用法，，，，）。Cursor中有一系列的`getXXX(int)`方法用于返回列中对应的值（列中是该类型的值），例如上面的`getString()`。同样可以通过`getType()`返回某列中数据的类型。Cursor中还有其他`getXXX()`方法，例如上面的`getColumnIndex("column1")`获取指定列的索引。
+
+#Content Provider许可（permission）
+
+provider指定的许可在使用该provider的程序中必须要声明。许可能够保证用户知道程序想要获取哪种数据。若不设置许可的话，外部程序不能使用该provider。然而和provider同一个程序中的组件可以任意获取，即使在有许可的情况下。
+
+可以在manifest配置文件中通过`<uses-permission>设置权限。在android安装程序时，用户必须保证该程序请求的所有许可都授权，否则不能安装该程序。
+
+#插入/更新/删除数据
+
+##插入数据
+
+通过`ContentResolver.insert()`方法能够对provider中的表进行插入数据，返回该插入行的URI。例如：
+
+```java
+
+// 接收插入返回值
+Uri mNewUri;
+// 将要插入的数据保存在ContentValues（内部是hashMap实现）
+ContentValues mNewValues = new ContentValues();
+// 设置每一列的值，参数为列和值
+mNewValues.put("column1", "example");
+// 插入到某个表中，参数为Uri和插入的ContentValues
+mNewUri = getContentResolver().insert(uri,mNewValues);
+
+```
+
+通过ContentValues对象设置要插入表中的值，该对象中设置的值的类型不需要和实际列中的值的类型一致。若不想设置某列，可以通过`putNull("column2")`设置该列为null。对于provider中的id不需要指定值，该值作为主键自动添加。
+
+对于`insert()`方法返回的Uri格式如下：
+`content://authority/table/行号id`
+通过这个Uri就能访问该行，可以通过`ContentUris.parseId(uri)`获得id（就是截取带有id的uri的最后部分）。
+
+##更新数据
+
+通过`ContentResolver.update()`可以对数据进行更新，若想清除值，只需设置为null。
+
+简单的代码如下；
+
+```java
+
+// 同样使用ContentValues设置更新的数据
+ContentValues mUpdateValues = new ContentValues();
+// 定义约束条件，更新第column1列值为example的行。。。。。
+String mSelectionClause = "column1 = ?";
+String[] mSelectionArgs = {"example"};
+// 接收修改行。
+int mRowsUpdated = 0;
+mUpdateValues.putNull("column2");
+mRowsUpdated = getContentResolver().update(
+    uri,
+    mUpdateValues,
+    mSelectionClause,
+    mSelectionArgs
+);
+
+```
+
+`update()`中的四个参数和`query()`的前四个参数一样。
+
+##删除数据
+
+通过`ContentResolver.delete()`可以删除数据，该方法接收三个参数：Uri，mSelectionClause，mSelectionArgs。和`update()`方法中的参数相比只少了一个ContentValues对象。
+
+上述CRUD拼成简单的SQL语句为：
+
+- 查询：select * from table1 where 范围
+- 插入：insert into table1(column1,column2) values(value1,value2)
+- 更新：update table1 set column1=value1 where 范围
+- 删除：delete from table1 where 范围
+
+#Content Provider的数据类型
+
+Content Provider提供的类型如下：
+
+- integer
+- long integer(long)
+- floating point
+- long floating point(double)
+- text
+
+其它的数据类型，provider使用长度为64KB字节数组BLOB（Binary Large OBject）存储数据。BLOB是数据库中用来存储二进制文件的字段类型。
+
+provider同样支持MIME数据类型，用于表示定义的URIs。下面有详细讲解。
+
+#其它访问provider的形式
+
+有三种可选的访问形式：
+
+- Batch访问：批处理形式
+  可以通过ContentProviderOperation类实现一组访问，使用`ContentResolver.applyBatch()`操作。
+- 异步查询
+  你需要在另一个线程中进行数据处理。可以使用CursorLoader对象实现。
+- 通过intents访问
+  尽管不能直接地发送intent给provider，但是我们可以将intent发送给provider所在的应用程序，这种方式是最佳的实现修改provider数据的方式。
+
+下面详细介绍Batch和通过intents方式，至于异步查询，将在Activity中的Loaders文档中介绍。
+
+##Batch访问
+
+当需要插入大量的行数据或者插入到多个表中时，Batch访问就非常有用。
+
+可以通过ContentProviderOperation类实现一组访问，使用`ContentResolver.applyBatch()`操作。
+
+例如下面进行一组插入操作：
+
+```java
+
+// 创建一组ContentProviderOperation对象，每一个对象代表一次CRUD操作
+ArrayList<ContentProviderOperation> ops =
+          new ArrayList<ContentProviderOperation>();
+
+ int rawContactInsertIndex = ops.size();
+ // 通过ContentProviderOperation类中的Builder类的build()方法创建ContentProviderOperation对象
+ // 没记错的话这应该是建造者模式
+ ops.add(ContentProviderOperation.newInsert(uri)
+          .withValue("column1", "value1")
+          .withValue("column2", "value2")
+          .build());
+
+ getContentResolver().applyBatch(authority,ops);
+
+```
+
+##使用intents访问
+
+通过Intent可以间接地访问content provider。即使在没有许可的条件下，我们可以通过Intent返回的结果实现间接访问。
+
+###获得临时许可
+
+在没有许可的情况下，我们可以通过发送intent给另一个有许可的程序，然后返回一个带URI许可的intent对象。这些指定的URI许可将会一直存在，直到接收许可的activity销毁。拥有永久许可的程序将授权临时许可，通过设置intent的flag属性：
+
+- Read许可：`FLAG_GRANT_READ_URI_PERMISSION`
+- Write许可 `FLAG_GRANT_WRITE_URI_PERMISSION`
+
+注意这些flags不是读写provider，只是能访问URI本身的许可。
+
+####使用helper app显示数据
+
+若我们的应用程序没有许可，但是我们仍然想通过intent显示另一个程序的数据。例如日历程序接收一个ACTION_VIEW型的intent，就能显示日期或事件。这种可以不用创建自己的UI来显示日历信息。发送intent的程序不需要是关联provider的程序。
+
+provider可以在manifest文件中`<provider>`标签属性`<android:grantUriPermission>`定义URI许可，同时也可以定义`<provdier>`子标签`<grant-uri-permission>`。
+
+例如，我们检索Contacts Provider中的联系人数据，即使没有READ_CONTACTS许可，也可以做到。可能我们只需要读取某个联系人的信息，因此不需要请求READ_CONTACTS许可来访问所有的联系人，可以让用户选择我们的程序可以读取哪个联系人。需要完成以下步骤：
+
+1. 通过`startActivityForResult()`发送一个包含ACTION_PICK的action(setAction())和CONTENT_ITEM_TYPE的联系人的MIME类型（setType()）的intent，代码如下：
+
+  ```java
+
+    Intent intent = new Intent();
+    intent.setAction(Intent.ACTION_PICK);
+    intent.setType(ContactsContract.RawContacts.CONTENT_ITEM_TYPE);
+    startActivityForResult(intent,RESULTCODE);
+
+  ```
+2. 因为intent匹配联系人app的activity的intent过滤器，因此该activity将会显示在前台。
+3. 在这个activity中，用户选择一个联系人，然后该activity就会调用`setResult(resultCode,intent)`设置intent并返回给我们的应用程序。该intent包括：用户选择的联系人的URI，`FLAG_GRANT_READ_URI_PERMISSION`的flags。这些flags授予我们的程序有URI许可，能够读取URI指定的联系人。最后，该activity调用`finish()`销毁。这个过程有联系人app完成。
+4. 我们的activity返回到前台，系统调用`onActivityResult()`方法，该方法接收刚才传过来的intent。
+5. 有了intent，我们就可以读取Contacts Provider中的联系人了（通过`intent.getData()`获取Uri，然后再截取id，根据id查询），即使我们没在manifest文件中设置读取许可。
+
+###使用另外一个应用程序
+
+我们可以使用另外一个拥有许可的应用程序操作provider。例如，我们想向日历中插入一些事件，则可以通过ACTION_INSERT的intent启动日历程序，让日历程序进行插入。
+
+
+#MIME类型
+
+MIME (Multipurpose Internet Mail Extensions) 是描述数据类型的因特网标准。
+Content Providers能够返回标准的MIME媒体类型，或者自定义MIME类型字符串，或者两者。
+MIME类型格式为：
+
+`type/subtype`
+
+例如知名MIME类型有`text/html`有text类型和html子类型。
+自定义MIME类型字符串，也被称为"vendor-specific"MIME类型，有更复杂的类型和子类型。对于多行来说类型通常是：
+
+`vnd.android.cursor.dir`
+
+对于单行来说：
+
+`vnd.androi.cursor.item`
+
+子类型是provider指定的，android内部的providers都有一些简单的子类型。例如当创建一个联系人的电话时，可以使用：
+
+`vnd.android.cursor.item/phone_v2`
+
+这里，子类型就是phone_v2。
+
+其它provider都有自定义的子类型，依赖于provider的权限（autority）和路径。例如，权限为com.example.train2，包括表Line1，Line2和Line3。对于表Line1的URI：
+`content://com.example.trains/Line1`
+对应的MIME类型为：
+`vnd.android.cursor.dir/vnd.example.line1`或`vnd.android.cursor.dir/vnd.com.example.train2.line1`
+对于Line2的第5行URI：
+`content://com.example.trains/Line2/5`
+对应的MIME类型为：
+`vnd.android.cursor.item/vnd.example.line2`或`vnd.android.cursor.dir/vnd.com.example.train2.line2`
+

@@ -1,0 +1,105 @@
+Android异步消息处理机制1Handler基本使用
+
+
+Android UI是线程不安全的，如果在子线程中尝试进行UI操作，程序就有可能会崩溃。解决的方案应该是创建一个Message对象，然后借助Handler发送出去，之后在Handler的handleMessage()方法中获得刚才发送的Message对象，然后在这里进行UI操作就不会再出现崩溃了。
+这种处理方式被称为异步消息处理线程。简单的说就是在子线程中实现更新UI操作。
+
+#Handler基本使用
+关于Handler的使用包括两种:
+
+ - 从子线程（worker线程）中向主线程（UI线程）发送消息，在主线程中处理消息；
+ - 从主线程（UI线程）中向子线程（worker线程）发送消息，在子线程中处理消息。
+
+##子线程向主线程发送消息
+
+主要步骤如下：
+
+1. 在主线程自定义Handler（非抽象类）子类并实现`handleMessage(Message)`方法；
+2. 在worker Thread当中通过Handler对象的`sendMessage(Message)`方法发送Message；
+3. Handler对象将Message放在消息队列MessagQueue中；
+4. Looper将Message从消息队列中取出，并找到对应的Handler对象。
+5. Looper调用Handler对象的`handleMessage(Message)`方法处理Message。
+
+其中，我们只要完成1，2两步，其余由系统完成。
+
+主要代码如下：
+
+```java
+
+//在main Thread中创建Handler对象
+handler = new MyHandler();
+//创建worker Thread
+new Thread(new Runnable() {
+	@Override
+	public void run() {
+ 	//创建消息对象
+		Message message = handler.obtainMessage();
+		message.obj = "我是从worker Thread向main Thread发送的消息";
+		//发送消息对象
+		handler.sendMessage(message);
+	}
+}).start();
+
+```
+
+其中，MyHandler类如下：
+
+```java
+
+class MyHandler extends Handler {
+	@Override
+	public void handleMessage(Message msg) {
+    	Log.d("result:",Thread.currentThread().getName());
+    	//只有在main Thread中才能操作UI
+     	Log.d("result",(String)msg.obj);
+	}
+}
+
+```
+
+上述方法就实现了从子线程（worker线程）中向主线程（UI线程）发送消息，在主线程中处理消息。
+
+##主线程向子线程发送消息
+
+主要步骤如下：
+
+```java
+
+1. 准备Looper对象
+2. 在 worker Thread生成Handler对象并实现`handleMessage()`方法；
+3. 在MainThread当中通过Handler对象的`sendMessage(Message)`方法发送Message。
+
+```
+
+一般在子线程中的实现代码如下：
+
+```java
+
+new Thread(){
+	@Override
+	public void run() {
+ 		//准备Looper对象
+		Looper.prepare();
+		handler2 = new MyHandler();
+		//循环检查消息队列，然后调用handleMessage()方法处理，若没有消息对象则该线程阻塞。
+		Looper.loop();
+	}
+}.start();
+
+```
+
+这里仍然使用了上面的MyHandler类。然后直接在主线程中调用handler2的`sendMessage(Message)`方法就能向子线程中发送消息，并在子线程中处理消息了。代码如下：
+
+```java
+
+Message message = handler2.obtainMessage();
+message.obj = "我是从main Thread向worker Thread 发送的消息";
+handler2.sendMessage(message);
+
+```
+
+上述方法就实现了从主线程（UI线程）中向子线程（worker线程）发送消息，在主线程中处理消息。
+
+也就是在哪里创建Handler对象，就在哪里处理该对象。
+
+

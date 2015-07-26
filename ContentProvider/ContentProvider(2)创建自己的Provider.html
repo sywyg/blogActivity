@@ -1,0 +1,1269 @@
+<!DOCTYPE html><html><head><meta charset="utf-8"><style>body {
+  width: 45em;
+  border: 1px solid #ddd;
+  outline: 1300px solid #fff;
+  margin: 16px auto;
+}
+
+body .markdown-body
+{
+  padding: 30px;
+}
+
+@font-face {
+  font-family: octicons-anchor;
+  src: url(data:font/woff;charset=utf-8;base64,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) format('woff');
+}
+
+.markdown-body {
+  -ms-text-size-adjust: 100%;
+  -webkit-text-size-adjust: 100%;
+  color: #333;
+  overflow: hidden;
+  font-family: "Helvetica Neue", Helvetica, "Segoe UI", Arial, freesans, sans-serif;
+  font-size: 16px;
+  line-height: 1.6;
+  word-wrap: break-word;
+}
+
+.markdown-body a {
+  background: transparent;
+}
+
+.markdown-body a:active,
+.markdown-body a:hover {
+  outline: 0;
+}
+
+.markdown-body strong {
+  font-weight: bold;
+}
+
+.markdown-body h1 {
+  font-size: 2em;
+  margin: 0.67em 0;
+}
+
+.markdown-body img {
+  border: 0;
+}
+
+.markdown-body hr {
+  -moz-box-sizing: content-box;
+  box-sizing: content-box;
+  height: 0;
+}
+
+.markdown-body pre {
+  overflow: auto;
+}
+
+.markdown-body code,
+.markdown-body kbd,
+.markdown-body pre {
+  font-family: monospace, monospace;
+  font-size: 1em;
+}
+
+.markdown-body input {
+  color: inherit;
+  font: inherit;
+  margin: 0;
+}
+
+.markdown-body html input[disabled] {
+  cursor: default;
+}
+
+.markdown-body input {
+  line-height: normal;
+}
+
+.markdown-body input[type="checkbox"] {
+  -moz-box-sizing: border-box;
+  box-sizing: border-box;
+  padding: 0;
+}
+
+.markdown-body table {
+  border-collapse: collapse;
+  border-spacing: 0;
+}
+
+.markdown-body td,
+.markdown-body th {
+  padding: 0;
+}
+
+.markdown-body * {
+  -moz-box-sizing: border-box;
+  box-sizing: border-box;
+}
+
+.markdown-body input {
+  font: 13px/1.4 Helvetica, arial, freesans, clean, sans-serif, "Segoe UI Emoji", "Segoe UI Symbol";
+}
+
+.markdown-body a {
+  color: #4183c4;
+  text-decoration: none;
+}
+
+.markdown-body a:hover,
+.markdown-body a:focus,
+.markdown-body a:active {
+  text-decoration: underline;
+}
+
+.markdown-body hr {
+  height: 0;
+  margin: 15px 0;
+  overflow: hidden;
+  background: transparent;
+  border: 0;
+  border-bottom: 1px solid #ddd;
+}
+
+.markdown-body hr:before {
+  display: table;
+  content: "";
+}
+
+.markdown-body hr:after {
+  display: table;
+  clear: both;
+  content: "";
+}
+
+.markdown-body h1,
+.markdown-body h2,
+.markdown-body h3,
+.markdown-body h4,
+.markdown-body h5,
+.markdown-body h6 {
+  margin-top: 15px;
+  margin-bottom: 15px;
+  line-height: 1.1;
+}
+
+.markdown-body h1 {
+  font-size: 30px;
+}
+
+.markdown-body h2 {
+  font-size: 21px;
+}
+
+.markdown-body h3 {
+  font-size: 16px;
+}
+
+.markdown-body h4 {
+  font-size: 14px;
+}
+
+.markdown-body h5 {
+  font-size: 12px;
+}
+
+.markdown-body h6 {
+  font-size: 11px;
+}
+
+.markdown-body blockquote {
+  margin: 0;
+}
+
+.markdown-body ul,
+.markdown-body ol {
+  padding: 0;
+  margin-top: 0;
+  margin-bottom: 0;
+}
+
+.markdown-body ol ol,
+.markdown-body ul ol {
+  list-style-type: lower-roman;
+}
+
+.markdown-body ul ul ol,
+.markdown-body ul ol ol,
+.markdown-body ol ul ol,
+.markdown-body ol ol ol {
+  list-style-type: lower-alpha;
+}
+
+.markdown-body dd {
+  margin-left: 0;
+}
+
+.markdown-body code {
+  font: 12px Consolas, "Liberation Mono", Menlo, Courier, monospace;
+}
+
+.markdown-body pre {
+  margin-top: 0;
+  margin-bottom: 0;
+  font: 12px Consolas, "Liberation Mono", Menlo, Courier, monospace;
+}
+
+.markdown-body .octicon {
+  font: normal normal 16px octicons-anchor;
+  line-height: 1;
+  display: inline-block;
+  text-decoration: none;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  -webkit-user-select: none;
+  -moz-user-select: none;
+  -ms-user-select: none;
+  user-select: none;
+}
+
+.markdown-body .octicon-link:before {
+  content: '\f05c';
+}
+
+.markdown-body>*:first-child {
+  margin-top: 0 !important;
+}
+
+.markdown-body>*:last-child {
+  margin-bottom: 0 !important;
+}
+
+.markdown-body .anchor {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  left: 0;
+  display: block;
+  padding-right: 6px;
+  padding-left: 30px;
+  margin-left: -30px;
+}
+
+.markdown-body .anchor:focus {
+  outline: none;
+}
+
+.markdown-body h1,
+.markdown-body h2,
+.markdown-body h3,
+.markdown-body h4,
+.markdown-body h5,
+.markdown-body h6 {
+  position: relative;
+  margin-top: 1em;
+  margin-bottom: 16px;
+  font-weight: bold;
+  line-height: 1.4;
+}
+
+.markdown-body h1 .octicon-link,
+.markdown-body h2 .octicon-link,
+.markdown-body h3 .octicon-link,
+.markdown-body h4 .octicon-link,
+.markdown-body h5 .octicon-link,
+.markdown-body h6 .octicon-link {
+  display: none;
+  color: #000;
+  vertical-align: middle;
+}
+
+.markdown-body h1:hover .anchor,
+.markdown-body h2:hover .anchor,
+.markdown-body h3:hover .anchor,
+.markdown-body h4:hover .anchor,
+.markdown-body h5:hover .anchor,
+.markdown-body h6:hover .anchor {
+  padding-left: 8px;
+  margin-left: -30px;
+  line-height: 1;
+  text-decoration: none;
+}
+
+.markdown-body h1:hover .anchor .octicon-link,
+.markdown-body h2:hover .anchor .octicon-link,
+.markdown-body h3:hover .anchor .octicon-link,
+.markdown-body h4:hover .anchor .octicon-link,
+.markdown-body h5:hover .anchor .octicon-link,
+.markdown-body h6:hover .anchor .octicon-link {
+  display: inline-block;
+}
+
+.markdown-body h1 {
+  padding-bottom: 0.3em;
+  font-size: 2.25em;
+  line-height: 1.2;
+  border-bottom: 1px solid #eee;
+}
+
+.markdown-body h2 {
+  padding-bottom: 0.3em;
+  font-size: 1.75em;
+  line-height: 1.225;
+  border-bottom: 1px solid #eee;
+}
+
+.markdown-body h3 {
+  font-size: 1.5em;
+  line-height: 1.43;
+}
+
+.markdown-body h4 {
+  font-size: 1.25em;
+}
+
+.markdown-body h5 {
+  font-size: 1em;
+}
+
+.markdown-body h6 {
+  font-size: 1em;
+  color: #777;
+}
+
+.markdown-body p,
+.markdown-body blockquote,
+.markdown-body ul,
+.markdown-body ol,
+.markdown-body dl,
+.markdown-body table,
+.markdown-body pre {
+  margin-top: 0;
+  margin-bottom: 16px;
+}
+
+.markdown-body hr {
+  height: 4px;
+  padding: 0;
+  margin: 16px 0;
+  background-color: #e7e7e7;
+  border: 0 none;
+}
+
+.markdown-body ul,
+.markdown-body ol {
+  padding-left: 2em;
+}
+
+.markdown-body ul ul,
+.markdown-body ul ol,
+.markdown-body ol ol,
+.markdown-body ol ul {
+  margin-top: 0;
+  margin-bottom: 0;
+}
+
+.markdown-body li>p {
+  margin-top: 16px;
+}
+
+.markdown-body dl {
+  padding: 0;
+}
+
+.markdown-body dl dt {
+  padding: 0;
+  margin-top: 16px;
+  font-size: 1em;
+  font-style: italic;
+  font-weight: bold;
+}
+
+.markdown-body dl dd {
+  padding: 0 16px;
+  margin-bottom: 16px;
+}
+
+.markdown-body blockquote {
+  padding: 0 15px;
+  color: #777;
+  border-left: 4px solid #ddd;
+}
+
+.markdown-body blockquote>:first-child {
+  margin-top: 0;
+}
+
+.markdown-body blockquote>:last-child {
+  margin-bottom: 0;
+}
+
+.markdown-body table {
+  display: block;
+  width: 100%;
+  overflow: auto;
+  word-break: normal;
+  word-break: keep-all;
+}
+
+.markdown-body table th {
+  font-weight: bold;
+}
+
+.markdown-body table th,
+.markdown-body table td {
+  padding: 6px 13px;
+  border: 1px solid #ddd;
+}
+
+.markdown-body table tr {
+  background-color: #fff;
+  border-top: 1px solid #ccc;
+}
+
+.markdown-body table tr:nth-child(2n) {
+  background-color: #f8f8f8;
+}
+
+.markdown-body img {
+  max-width: 100%;
+  -moz-box-sizing: border-box;
+  box-sizing: border-box;
+}
+
+.markdown-body code {
+  padding: 0;
+  padding-top: 0.2em;
+  padding-bottom: 0.2em;
+  margin: 0;
+  font-size: 85%;
+  background-color: rgba(0,0,0,0.04);
+  border-radius: 3px;
+}
+
+.markdown-body code:before,
+.markdown-body code:after {
+  letter-spacing: -0.2em;
+  content: "\00a0";
+}
+
+.markdown-body pre>code {
+  padding: 0;
+  margin: 0;
+  font-size: 100%;
+  word-break: normal;
+  white-space: pre;
+  background: transparent;
+  border: 0;
+}
+
+.markdown-body .highlight {
+  margin-bottom: 16px;
+}
+
+.markdown-body .highlight pre,
+.markdown-body pre {
+  padding: 16px;
+  overflow: auto;
+  font-size: 85%;
+  line-height: 1.45;
+  background-color: #f7f7f7;
+  border-radius: 3px;
+}
+
+.markdown-body .highlight pre {
+  margin-bottom: 0;
+  word-break: normal;
+}
+
+.markdown-body pre {
+  word-wrap: normal;
+}
+
+.markdown-body pre code {
+  display: inline;
+  max-width: initial;
+  padding: 0;
+  margin: 0;
+  overflow: initial;
+  line-height: inherit;
+  word-wrap: normal;
+  background-color: transparent;
+  border: 0;
+}
+
+.markdown-body pre code:before,
+.markdown-body pre code:after {
+  content: normal;
+}
+
+.markdown-body .highlight {
+  background: #fff;
+}
+
+.markdown-body .highlight .h {
+  color: #333;
+  font-style: normal;
+  font-weight: normal;
+}
+
+.markdown-body .highlight .mf,
+.markdown-body .highlight .mh,
+.markdown-body .highlight .mi,
+.markdown-body .highlight .mo,
+.markdown-body .highlight .il,
+.markdown-body .highlight .m {
+  color: #945277;
+}
+
+.markdown-body .highlight .s,
+.markdown-body .highlight .sb,
+.markdown-body .highlight .sc,
+.markdown-body .highlight .sd,
+.markdown-body .highlight .s2,
+.markdown-body .highlight .se,
+.markdown-body .highlight .sh,
+.markdown-body .highlight .si,
+.markdown-body .highlight .sx,
+.markdown-body .highlight .s1 {
+  color: #df5000;
+}
+
+.markdown-body .highlight .kc,
+.markdown-body .highlight .kd,
+.markdown-body .highlight .kn,
+.markdown-body .highlight .kp,
+.markdown-body .highlight .kr,
+.markdown-body .highlight .kt,
+.markdown-body .highlight .k,
+.markdown-body .highlight .o {
+  font-weight: bold;
+}
+
+.markdown-body .highlight .kt {
+  color: #458;
+}
+
+.markdown-body .highlight .c,
+.markdown-body .highlight .cm,
+.markdown-body .highlight .c1 {
+  color: #998;
+  font-style: italic;
+}
+
+.markdown-body .highlight .cp,
+.markdown-body .highlight .cs,
+.markdown-body .highlight .cp .h {
+  color: #999;
+  font-weight: bold;
+}
+
+.markdown-body .highlight .cs {
+  font-style: italic;
+}
+
+.markdown-body .highlight .n {
+  color: #333;
+}
+
+.markdown-body .highlight .na,
+.markdown-body .highlight .nv,
+.markdown-body .highlight .vc,
+.markdown-body .highlight .vg,
+.markdown-body .highlight .vi {
+  color: #008080;
+}
+
+.markdown-body .highlight .nb {
+  color: #0086B3;
+}
+
+.markdown-body .highlight .nc {
+  color: #458;
+  font-weight: bold;
+}
+
+.markdown-body .highlight .no {
+  color: #094e99;
+}
+
+.markdown-body .highlight .ni {
+  color: #800080;
+}
+
+.markdown-body .highlight .ne {
+  color: #990000;
+  font-weight: bold;
+}
+
+.markdown-body .highlight .nf {
+  color: #945277;
+  font-weight: bold;
+}
+
+.markdown-body .highlight .nn {
+  color: #555;
+}
+
+.markdown-body .highlight .nt {
+  color: #000080;
+}
+
+.markdown-body .highlight .err {
+  color: #a61717;
+  background-color: #e3d2d2;
+}
+
+.markdown-body .highlight .gd {
+  color: #000;
+  background-color: #fdd;
+}
+
+.markdown-body .highlight .gd .x {
+  color: #000;
+  background-color: #faa;
+}
+
+.markdown-body .highlight .ge {
+  font-style: italic;
+}
+
+.markdown-body .highlight .gr {
+  color: #aa0000;
+}
+
+.markdown-body .highlight .gh {
+  color: #999;
+}
+
+.markdown-body .highlight .gi {
+  color: #000;
+  background-color: #dfd;
+}
+
+.markdown-body .highlight .gi .x {
+  color: #000;
+  background-color: #afa;
+}
+
+.markdown-body .highlight .go {
+  color: #888;
+}
+
+.markdown-body .highlight .gp {
+  color: #555;
+}
+
+.markdown-body .highlight .gs {
+  font-weight: bold;
+}
+
+.markdown-body .highlight .gu {
+  color: #800080;
+  font-weight: bold;
+}
+
+.markdown-body .highlight .gt {
+  color: #aa0000;
+}
+
+.markdown-body .highlight .ow {
+  font-weight: bold;
+}
+
+.markdown-body .highlight .w {
+  color: #bbb;
+}
+
+.markdown-body .highlight .sr {
+  color: #017936;
+}
+
+.markdown-body .highlight .ss {
+  color: #8b467f;
+}
+
+.markdown-body .highlight .bp {
+  color: #999;
+}
+
+.markdown-body .highlight .gc {
+  color: #999;
+  background-color: #EAF2F5;
+}
+
+.markdown-body kbd {
+  background-color: #e7e7e7;
+  background-image: -webkit-linear-gradient(#fefefe, #e7e7e7);
+  background-image: linear-gradient(#fefefe, #e7e7e7);
+  background-repeat: repeat-x;
+  display: inline-block;
+  padding: 3px 5px;
+  font: 11px Consolas, "Liberation Mono", Menlo, Courier, monospace;
+  line-height: 10px;
+  color: #000;
+  border: 1px solid #cfcfcf;
+  border-radius: 2px;
+}
+
+.markdown-body .highlight .pl-coc,
+.markdown-body .highlight .pl-entm,
+.markdown-body .highlight .pl-eoa,
+.markdown-body .highlight .pl-mai .pl-sf,
+.markdown-body .highlight .pl-pdv,
+.markdown-body .highlight .pl-sc,
+.markdown-body .highlight .pl-sr,
+.markdown-body .highlight .pl-v,
+.markdown-body .highlight .pl-vpf {
+  color: #0086b3;
+}
+
+.markdown-body .highlight .pl-eoac,
+.markdown-body .highlight .pl-mdht,
+.markdown-body .highlight .pl-mi1,
+.markdown-body .highlight .pl-mri,
+.markdown-body .highlight .pl-va,
+.markdown-body .highlight .pl-vpu {
+  color: #008080;
+}
+
+.markdown-body .highlight .pl-c,
+.markdown-body .highlight .pl-pdc {
+  color: #b4b7b4;
+  font-style: italic;
+}
+
+.markdown-body .highlight .pl-k,
+.markdown-body .highlight .pl-ko,
+.markdown-body .highlight .pl-kolp,
+.markdown-body .highlight .pl-mc,
+.markdown-body .highlight .pl-mr,
+.markdown-body .highlight .pl-ms,
+.markdown-body .highlight .pl-s,
+.markdown-body .highlight .pl-sok,
+.markdown-body .highlight .pl-st {
+  color: #6e5494;
+}
+
+.markdown-body .highlight .pl-ef,
+.markdown-body .highlight .pl-enf,
+.markdown-body .highlight .pl-enm,
+.markdown-body .highlight .pl-entc,
+.markdown-body .highlight .pl-eoi,
+.markdown-body .highlight .pl-sf,
+.markdown-body .highlight .pl-smc {
+  color: #d12089;
+}
+
+.markdown-body .highlight .pl-ens,
+.markdown-body .highlight .pl-eoai,
+.markdown-body .highlight .pl-kos,
+.markdown-body .highlight .pl-mh .pl-pdh,
+.markdown-body .highlight .pl-mp,
+.markdown-body .highlight .pl-pde,
+.markdown-body .highlight .pl-stp {
+  color: #458;
+}
+
+.markdown-body .highlight .pl-enti {
+  color: #d12089;
+  font-weight: bold;
+}
+
+.markdown-body .highlight .pl-cce,
+.markdown-body .highlight .pl-enc,
+.markdown-body .highlight .pl-kou,
+.markdown-body .highlight .pl-mq {
+  color: #f93;
+}
+
+.markdown-body .highlight .pl-mp1 .pl-sf {
+  color: #458;
+  font-weight: bold;
+}
+
+.markdown-body .highlight .pl-cos,
+.markdown-body .highlight .pl-ent,
+.markdown-body .highlight .pl-md,
+.markdown-body .highlight .pl-mdhf,
+.markdown-body .highlight .pl-ml,
+.markdown-body .highlight .pl-pdc1,
+.markdown-body .highlight .pl-pds,
+.markdown-body .highlight .pl-s1,
+.markdown-body .highlight .pl-scp,
+.markdown-body .highlight .pl-sol {
+  color: #df5000;
+}
+
+.markdown-body .highlight .pl-c1,
+.markdown-body .highlight .pl-cn,
+.markdown-body .highlight .pl-pse,
+.markdown-body .highlight .pl-pse .pl-s2,
+.markdown-body .highlight .pl-vi {
+  color: #a31515;
+}
+
+.markdown-body .highlight .pl-mb,
+.markdown-body .highlight .pl-pdb {
+  color: #df5000;
+  font-weight: bold;
+}
+
+.markdown-body .highlight .pl-mi,
+.markdown-body .highlight .pl-pdi {
+  color: #6e5494;
+  font-style: italic;
+}
+
+.markdown-body .highlight .pl-ms1 {
+  background-color: #f5f5f5;
+}
+
+.markdown-body .highlight .pl-mdh,
+.markdown-body .highlight .pl-mdi {
+  font-weight: bold;
+}
+
+.markdown-body .highlight .pl-mdr {
+  color: #0086b3;
+  font-weight: bold;
+}
+
+.markdown-body .highlight .pl-s2 {
+  color: #333;
+}
+
+.markdown-body .highlight .pl-ii {
+  background-color: #df5000;
+  color: #fff;
+}
+
+.markdown-body .highlight .pl-ib {
+  background-color: #f93;
+}
+
+.markdown-body .highlight .pl-id {
+  background-color: #a31515;
+  color: #fff;
+}
+
+.markdown-body .highlight .pl-iu {
+  background-color: #b4b7b4;
+}
+
+.markdown-body .highlight .pl-mo {
+  color: #969896;
+}
+
+.markdown-body .task-list-item {
+  list-style-type: none;
+}
+
+.markdown-body .task-list-item+.task-list-item {
+  margin-top: 3px;
+}
+
+.markdown-body .task-list-item input {
+  float: left;
+  margin: 0.3em 0 0.25em -1.6em;
+  vertical-align: middle;
+}</style><title>ContentProvider(2)创建自己的Provider</title></head><body><article class="markdown-body"><p>本文翻译自android官方文档，结合自己测试，整理如下。</p>
+
+<p>content provider管理数据的访问，我们可以在自己的应用程序中实现一个或多个自定义的provider（通过继承抽象类ContentProvider），当然这些provider需要在manifest文件中注册。尽管content provider是用来为其它程序来访问数据的，但是在自己程序中的activities显然可以对这些数据进行处理。</p>
+
+<h1>
+<a id="user-content-创建provider之前注意事项" class="anchor" href="#%E5%88%9B%E5%BB%BAprovider%E4%B9%8B%E5%89%8D%E6%B3%A8%E6%84%8F%E4%BA%8B%E9%A1%B9" aria-hidden="true"><span class="octicon octicon-link"></span></a>创建provider之前注意事项</h1>
+
+<p>确定是否需要提供content provider。若有以下一种或多种需求的话需要创建content provider：</p>
+
+<ul>
+<li>想提供给其他程序复杂的数据或文件；</li>
+<li>想允许用户将复杂的数据从我们的程序复制到另外的程序中；</li>
+<li>想使用查询框架提供自定义查询建议。</li>
+</ul>
+
+<p>若在程序内部使用SQLite数据库，则不需要provider。</p>
+
+<p>接下来，通过下列步骤创建provider（先简单的总结，后续详细介绍）：</p>
+
+<ol>
+<li><p>为数据设计存储方式，content provider提供两种方式：</p></li>
+</ol>
+
+<ul>
+<li>文件数据
+数据保存在文件中，例如图片，视频，音频等。这些文件存储在私有的空间，provider可以提供外部程序访问。</li>
+<li><p>结构化的数据
+这样的数据通常保存在数据库，数组，或者相似的结构中，当然可以把这些数据以兼容的方式保存在表中。表中的一行表示一个实体（记录），一列表示实体相关属性的取值。通常这些数据保存在SQLite数据库中，当然也可以永久地保存。</p></li>
+</ul>
+
+<ol>
+<li>需要继承抽象类ContentProvider，并且覆盖必要的方法。这个类是我们的数据和其他程序交互的接口。</li>
+<li>定义provider的权限（authority），内容URIs和列名。若程序想要处理intents，则还必须定义intent的action，extra data和flags。同样需要定义其它程序想要访问该provider必须请求的许可（permission）。通常可以考虑把这些值定义为常量并定义在另一个类中。</li>
+<li>添加额外的信息。</li>
+</ol>
+
+<h1>
+<a id="user-content-设计数据存储" class="anchor" href="#%E8%AE%BE%E8%AE%A1%E6%95%B0%E6%8D%AE%E5%AD%98%E5%82%A8" aria-hidden="true"><span class="octicon octicon-link"></span></a>设计数据存储</h1>
+
+<p>在提供provider之前，我们必须要确定我们的数据该如何存储，当然存储方式我们可以任意指定，然后再针对该存储方式设计provider。</p>
+
+<p>有下列几种存储方式：</p>
+
+<ul>
+<li>存储在SQLite数据库中。这种方式我们不是必须要使用一个数据库，provider对外表现为一组表，因此不需要内部实现相关的数据库。</li>
+<li>存储在文件中。</li>
+<li>存储在网络中。</li>
+</ul>
+
+<h2>
+<a id="user-content-注意事项" class="anchor" href="#%E6%B3%A8%E6%84%8F%E4%BA%8B%E9%A1%B9" aria-hidden="true"><span class="octicon octicon-link"></span></a>注意事项</h2>
+
+<ul>
+<li>表数据通常需要主键，provider为每行赋值一个唯一的数值。尽管主键这一列可以任意名称，但是推荐使用<code>BaseColumns._ID</code>，这样的话，在ListView就能很方便的检索。</li>
+<li>若提供位图或者更大的文件数据的话，这些数据会保存在文件中，以间接地方式提供。若是使用这些数据的话，我们应该通知客户端它们应该使用ContentResovler类中的文件方法来获取这些数据。</li>
+<li>存储BLOB数据类型的话大小或结构会发生变化。</li>
+</ul>
+
+<h1>
+<a id="user-content-设计内容uris" class="anchor" href="#%E8%AE%BE%E8%AE%A1%E5%86%85%E5%AE%B9uris" aria-hidden="true"><span class="octicon octicon-link"></span></a>设计内容URIs</h1>
+
+<p>内容URI是能够识别provider中数据的URI，包括权限（authority）和路径（path）。权限找到provider，路径找到表或文件。还可以有一个id，能够表示某一行。</p>
+
+<h2>
+<a id="user-content-设计权限authority" class="anchor" href="#%E8%AE%BE%E8%AE%A1%E6%9D%83%E9%99%90authority" aria-hidden="true"><span class="octicon octicon-link"></span></a>设计权限authority</h2>
+
+<p>权限用于区分不同程序，一般为了避免冲突，都会采用包名的形式命名。例如包名为：<code>com.example.sywyg</code>，则该权限就可以为：<code>com.example.sywyg.provider</code>。</p>
+
+<h2>
+<a id="user-content-设计路径path" class="anchor" href="#%E8%AE%BE%E8%AE%A1%E8%B7%AF%E5%BE%84path" aria-hidden="true"><span class="octicon octicon-link"></span></a>设计路径path</h2>
+
+<p>URI是权限加路径的方式来查找指定的表。路径是区分同一程序中表或者其它形式（例如文件）的，可以直接添加在权限后面。例如table1和table2，则形成的URI分别为：<code>com.example.sywyg.provider/table1</code>和<code>com.example.sywyg.provider/table2</code>。</p>
+
+<p>最后内容URI需要在权限和路径前加上<code>content://</code>表示内容URI。例如，一个标准的内容URI写法如下：<code>content://com.example.sywyg.provider/table1</code>。</p>
+
+<h2>
+<a id="user-content-处理uri的id" class="anchor" href="#%E5%A4%84%E7%90%86uri%E7%9A%84id" aria-hidden="true"><span class="octicon octicon-link"></span></a>处理URI的ID</h2>
+
+<p>将ID追加到URI后面的话就可以检索到表中的指定的行，ID对应的列名为_ID。</p>
+
+<h2>
+<a id="user-content-uri模式匹配" class="anchor" href="#uri%E6%A8%A1%E5%BC%8F%E5%8C%B9%E9%85%8D" aria-hidden="true"><span class="octicon octicon-link"></span></a>URI模式匹配</h2>
+
+<p>UriMatcher类映射内容URI模式到一个integer类型数，我们可以使用该值进行模式匹配。</p>
+
+<p>URI模式通过通配符匹配：</p>
+
+<ul>
+<li>*：匹配任意长度和有效的字符串；</li>
+<li>#：匹配任意长度的数字字符；</li>
+</ul>
+
+<p>假设权限为：<code>com.example.app.provider</code>，识别下面的URI对应的表：</p>
+
+<p>`
+content://com.example.app.provider/table1: 表为 table1.
+content://com.example.app.provider/table2/dataset1: 表为 dataset1.
+content://com.example.app.provider/table2/dataset2: 表为 dataset2.
+content://com.example.app.provider/table3: 表为 table3.</p>
+
+<p>`</p>
+
+<p>若带有ID同样可以识别：
+<code>content://com.example.app.provider/table3/1</code> 表table3中的第1行</p>
+
+<p>下面的URI模式：
+<code>content://com.example.app.provider/*</code>
+匹配provider中的任意URI</p>
+
+<p><code>content://com.example.app.provider/table2/*</code>将会匹配表dataset1和dataset2，但是不会匹配table1或table3。</p>
+
+<p><code>content://com.example.app.provider/table3/#</code>将会匹配table3中的任意行。
+<code>content://com.example.app.provider/table3/6</code>将会匹配table3中的第6行。</p>
+
+<p>总结起来，URI标准就是：content:///或content:////，前者针对表，后者针对指定行。</p>
+
+<p>我们可以借助UriMatcher类快速实现内容URI的匹配。常用代码如下：</p>
+
+<div class="highlight highlight-java"><pre>
+<span class="pl-k">public</span> <span class="pl-k">static</span> <span class="pl-smi">UriMatcher</span> mUriMatcher <span class="pl-k">=</span> <span class="pl-k">new</span> <span class="pl-smi">UriMatcher</span>(<span class="pl-smi">UriMatcher</span><span class="pl-c1"><span class="pl-k">.</span>NO_MATCH</span>);
+mUriMatcher<span class="pl-k">.</span>addURI(authority,path,customMatch);
+</pre></div>
+
+<p><code>addURI()</code>能够将字符串authority和字符串path解析为：<code>content://&lt;authority&gt;/&lt;path&gt;</code>（这里的path中可以带有id），然后通过<code>match(URI)</code>方法进行匹配字符串customMatch，<code>match(URI)</code>返回的就是<code>addURI()</code>中的第三个参数，利用这个参数就可以响应调用者期望访问的数据。</p>
+
+<p>其它的类，如ContentUris，Uri和Uri.Builder。ContentUris可以方便的在uri后面添加id，Uri和Uri.builder能够方便的解析Uri对象以及生成新的Uri对象。</p>
+
+<h1>
+<a id="user-content-继承contentprovider类" class="anchor" href="#%E7%BB%A7%E6%89%BFcontentprovider%E7%B1%BB" aria-hidden="true"><span class="octicon octicon-link"></span></a>继承ContentProvider类</h1>
+
+<p>ContentProvider类能够管理我们provider中的数据，外界通过ContentResovler可以调用对应的ContentProvider方法实现操作数据。因此，我们必须要提供相应的方法来操作数据。</p>
+
+<h2>
+<a id="user-content-覆盖方法" class="anchor" href="#%E8%A6%86%E7%9B%96%E6%96%B9%E6%B3%95" aria-hidden="true"><span class="octicon octicon-link"></span></a>覆盖方法</h2>
+
+<p>我们需要实现以下方法，才能方便ContentResovler访问数据。</p>
+
+<ol>
+<li>
+<code>query()</code>
+检索数据，返回Cursor对象。</li>
+<li>
+<code>insert()</code>
+插入一行数据，返回新插入行的URI。</li>
+<li>
+<code>update()</code>
+更新存在的某行，返回更新的行号。</li>
+<li>
+<code>delete()</code>
+删除存在的某行，返回删除的行号。</li>
+<li>
+<code>getType()</code>
+返回对应URI的MIME类型。</li>
+<li>
+<code>onCreate()</code>
+初始化provider。当创建provider对象时，就会立即调用。注意只有ContentResovler对象试图访问数据时才会创建provider对象。</li>
+</ol>
+
+<p>可以看到对于上述几个操作数据的方法，在ContentResovler有同样名称的方法。</p>
+
+<p>在覆盖方法时需注意一下几点：</p>
+
+<ul>
+<li>除了<code>onCreate()</code>之外的方法都要注意多线程安全问题。</li>
+<li>避免在<code>onCreate()</code>进行长时间的操作。直到需要时再初始化对应的内容。</li>
+<li>尽管我们需要实现这些方法，但是除了返回值外，我们可以不用做任何事。例如我们不希望外界删除数据，因此我们只需要返回对应的行号，而不在方法中写任何代码。</li>
+</ul>
+
+<h3>
+<a id="user-content-实现query方法" class="anchor" href="#%E5%AE%9E%E7%8E%B0query%E6%96%B9%E6%B3%95" aria-hidden="true"><span class="octicon octicon-link"></span></a>实现<code>query()</code>方法</h3>
+
+<p>该方法会返回一个Cursor对象，或者失败的话抛出异常。若没有查到对应的行则应该返回一个<code>getCount()</code>方法为0的Cursor对象。只有在内部出现错误是才返回null。若使用SQLite数据库保存数据的话，可以直接调用SQLiteDatabase类的<code>query()</code>方法返回Cursor对象。若不使用的话，就要使用Cursor类的具体子类。</p>
+
+<p>在查询时可能会抛出下列异常：</p>
+
+<ul>
+<li>IllegalArgumentException（当接收到无效URI时）</li>
+<li>NullPointerException</li>
+</ul>
+
+<p>若访问的是SQLite数据库，则<code>query()</code>简单实现代码如下：</p>
+
+<div class="highlight highlight-java"><pre>
+<span class="pl-k">public</span> <span class="pl-k">class</span> <span class="pl-en">ExampleProvider</span> <span class="pl-k">extends</span> <span class="pl-e">ContentProvider</span> {
+    <span class="pl-k">private</span> <span class="pl-k">static</span> <span class="pl-k">final</span> <span class="pl-smi">UriMatcher</span> sUriMatcher;
+    sUriMatcher.<span class="pl-en">addURI</span>("<span class="pl-v">com</span>.<span class="pl-v">example</span>.<span class="pl-v">app</span>.<span class="pl-v">provider</span>", "<span class="pl-v">table3</span>", <span class="pl-v">1</span>);
+    sUriMatcher.<span class="pl-en">addURI</span>("<span class="pl-v">com</span>.<span class="pl-v">example</span>.<span class="pl-v">app</span>.<span class="pl-v">provider</span>", "<span class="pl-v">table3</span>/#", <span class="pl-v">2</span>);
+    <span class="pl-c">// 参数为ContentResovler调用query()方法传递过来的</span>
+    <span class="pl-k">public</span> <span class="pl-smi">Cursor</span> <span class="pl-en">query</span>(
+        <span class="pl-smi">Uri</span> <span class="pl-v">uri</span>,
+        <span class="pl-k">String</span>[] <span class="pl-v">projection</span>,
+        <span class="pl-smi">String</span> <span class="pl-v">selection</span>,
+        <span class="pl-k">String</span>[] <span class="pl-v">selectionArgs</span>,
+        <span class="pl-smi">String</span> <span class="pl-v">sortOrder</span>) {
+        <span class="pl-k">switch</span> (sUriMatcher<span class="pl-k">.</span>match(uri)) {
+            <span class="pl-c">// 对应table3</span>
+            <span class="pl-k">case</span> <span class="pl-c1">1</span><span class="pl-k">:</span>
+                <span class="pl-k">if</span> (<span class="pl-smi">TextUtils</span><span class="pl-k">.</span>isEmpty(sortOrder)) sortOrder <span class="pl-k">=</span> <span class="pl-s"><span class="pl-pds">"</span>_ID ASC<span class="pl-pds">"</span></span>;
+                <span class="pl-k">break</span>;
+            <span class="pl-c">// 对应带有id的table3</span>
+            <span class="pl-k">case</span> <span class="pl-c1">2</span><span class="pl-k">:</span>
+                selection <span class="pl-k">=</span> selection <span class="pl-k">+</span> <span class="pl-s"><span class="pl-pds">"</span>_ID = <span class="pl-pds">"</span></span> uri<span class="pl-k">.</span>getLastPathSegment();
+                <span class="pl-k">break</span>;
+            <span class="pl-k">default</span><span class="pl-k">:</span>
+                <span class="pl-k">throw</span> <span class="pl-k">new</span> <span class="pl-smi">IllegalArgumentException</span>(<span class="pl-s"><span class="pl-pds">"</span>Unknown URI <span class="pl-pds">"</span></span> <span class="pl-k">+</span> uri);  
+      }
+        <span class="pl-c">// 实际查询SQLite数据库语句</span>
+
+    }
+</pre></div>
+
+<h3>
+<a id="user-content-实现insert方法" class="anchor" href="#%E5%AE%9E%E7%8E%B0insert%E6%96%B9%E6%B3%95" aria-hidden="true"><span class="octicon octicon-link"></span></a>实现<code>insert()</code>方法</h3>
+
+<p>插入方法将新的一行添加到指定的表中，数据来自于参数ContentValues 传递的数据，若某一列没有指定，则提供默认值（该默认值取决于provider或数据库本身）。</p>
+
+<p>该方法会返回新行的URI。我们可以通过ContentUris的<code>withAppendId()</code>方法在URI后添加主键ID（通常是_ID）来构建该URI。直接通过<code>parse()</code>方法也行。</p>
+
+<h3>
+<a id="user-content-实现update方法" class="anchor" href="#%E5%AE%9E%E7%8E%B0update%E6%96%B9%E6%B3%95" aria-hidden="true"><span class="octicon octicon-link"></span></a>实现<code>update()</code>方法</h3>
+
+<p>和插入类似，不再介绍。</p>
+
+<h3>
+<a id="user-content-实现delete方法" class="anchor" href="#%E5%AE%9E%E7%8E%B0delete%E6%96%B9%E6%B3%95" aria-hidden="true"><span class="octicon octicon-link"></span></a>实现<code>delete()</code>方法</h3>
+
+<p>删除指定的行。该方法不需要真的删除某行，若我们使用同步适配器的话，可以考虑先把要删除的数据进行标记删除。该同步适配器可以在从provider中真的删除数据之前能够检查出删除的行，并把这些排除，实现假删除。</p>
+
+<h3>
+<a id="user-content-实现gettype方法" class="anchor" href="#%E5%AE%9E%E7%8E%B0gettype%E6%96%B9%E6%B3%95" aria-hidden="true"><span class="octicon octicon-link"></span></a>实现<code>getType()</code>方法</h3>
+
+<p>将在下面部分详细讲解。</p>
+
+<h3>
+<a id="user-content-实现oncreate方法" class="anchor" href="#%E5%AE%9E%E7%8E%B0oncreate%E6%96%B9%E6%B3%95" aria-hidden="true"><span class="octicon octicon-link"></span></a>实现<code>onCreate()</code>方法</h3>
+
+<p>当创建provider时，系统调用<code>onCreate()</code>方法。我们应该保证在这里初始化的内容是必须的且能够快速执行，对于不是必须的且耗时的可以在需要时再初始化。例如数据库创建以及数据加载可以在真正请求操作数据时再执行。若太耗时的话，provider启动就会耗时，显然这会影响回应请求该provider的程序。</p>
+
+<h1>
+<a id="user-content-contentprovider的mime类型" class="anchor" href="#contentprovider%E7%9A%84mime%E7%B1%BB%E5%9E%8B" aria-hidden="true"><span class="octicon octicon-link"></span></a>ContentProvider的MIME类型</h1>
+
+<p>ContentProvider有两个方法能返回类型：</p>
+
+<ul>
+<li>
+<code>getType()</code>
+这个需要在子类中实现</li>
+<li>
+<code>getStreamTypes()</code>
+若provider提供文件访问的话，就需要实现这个。</li>
+</ul>
+
+<h2>
+<a id="user-content-表的mime类型" class="anchor" href="#%E8%A1%A8%E7%9A%84mime%E7%B1%BB%E5%9E%8B" aria-hidden="true"><span class="octicon octicon-link"></span></a>表的MIME类型</h2>
+
+<p><code>getType()</code>方法返回一个MIME格式的字符串，用来描述参数URI对应的 数据类型。参数Uri可以匹配一个模式而不是指定的URI，这样我们应该返回和匹配模式的URIs相关的数据类型。</p>
+
+<p>对于常见的类型：text,HTML,JPEG，<code>getType()</code>方法应该返回标准的MIME类型。</p>
+
+<p>对于指定一行或多行的URIs，<code>getType()</code>方法应该返回android指定的MIME格式：</p>
+
+<ul>
+<li>类型部分：vnd</li>
+<li>子类型部分：
+
+<ul>
+<li>URI模式只有一行：android.cursor.item/</li>
+<li>URI模式有多行：android.cursor.dir/</li>
+</ul>
+</li>
+<li>Provider指定部分：vnd..
+name应该是全局唯一的，type应该是对应URI模式唯一的。通常，name应该是包名，type应该是和URI相关的表名。
+例如，provider权限为<code>com.example.app.provider</code>,表名为：table1，则table1多行的MIME类型为：
+<code>vnd.android.cursor.dir/vnd.com.example.provider.table1</code>
+单行的MIME类型为：
+<code>vnd.android.cursor.item/vnd.com.example.provider.table1</code>
+</li>
+</ul>
+
+<h2>
+<a id="user-content-文件的mime类型" class="anchor" href="#%E6%96%87%E4%BB%B6%E7%9A%84mime%E7%B1%BB%E5%9E%8B" aria-hidden="true"><span class="octicon octicon-link"></span></a>文件的MIME类型</h2>
+
+<p>若provider提供文件的话，需要实现<code>getStreamTypes()</code>方法。该方法返回一个MIME类型的字符串数组，根据给定的URI。我们应该根据MIME类型过滤参数过滤MIME类型，以便返回客户端想处理的MIME类型。</p>
+
+<p>例如，provider提供图片文件：.jpg,.png和.gif格式。若一个程序调用了<code>getStreamTypes()</code>使用过滤参数image/<em>，那么该方法就会返回：
+<code>{ "image/jpeg", "image/png", "image/gif"}</code>
+若程序只需要.jpg的话，可以使用过滤参数</em>\/jpeg，则方法返回：
+<code>{"image/jpeg"}</code>
+若provider不提供类型的话，方法返回null。</p>
+
+<h1>
+<a id="user-content-实现相关类" class="anchor" href="#%E5%AE%9E%E7%8E%B0%E7%9B%B8%E5%85%B3%E7%B1%BB" aria-hidden="true"><span class="octicon octicon-link"></span></a>实现相关类</h1>
+
+<p>一般需要一个public final类型的相关类来定义常量：URIs，列名，MIME或者其他和provider相关的信息。该类使provider和其它程序建立一种关系，能够确保provider被正确地获取。</p>
+
+<p>对于其他程序来说，可以通过我们提供的.jar文件来操作这个相关类，进而实现操作provider。</p>
+
+<h1>
+<a id="user-content-实现content-provider许可" class="anchor" href="#%E5%AE%9E%E7%8E%B0content-provider%E8%AE%B8%E5%8F%AF" aria-hidden="true"><span class="octicon octicon-link"></span></a>实现Content Provider许可</h1>
+
+<p>需要注意一下几点：</p>
+
+<ul>
+<li>默认情况下，存储在设备内存（并不是运行内存）数据文件是我们程序和provider私有的。</li>
+<li>SQLite数据库是我们程序和provider私有的。</li>
+<li>默认情况，保存在存储卡上的数据是公有的都可以访问。我们不能使用provider限制该数据的访问权限。</li>
+<li>打开或创建存储内存上的一个文件或SQLite数据库的方法调用潜在地授予了其它程序读写这些数据的权限。若是使用存储内存上的数据作为provider的数据集的话，其它程序都有读写的权限，而我们在manifest设置的将不起作用。默认的获取数据是私有的，不应该改变。</li>
+</ul>
+
+<p>若我们想使用content provider权限控制数据的读取，我们需要把数据存储在内部文件，SQLite数据库或服务器中，并且确保这些文件和数据库是私有的。</p>
+
+<h2>
+<a id="user-content-实现许可" class="anchor" href="#%E5%AE%9E%E7%8E%B0%E8%AE%B8%E5%8F%AF" aria-hidden="true"><span class="octicon octicon-link"></span></a>实现许可</h2>
+
+<p>默认情况下，provider没有设置许可，所有的程序都能获取provider数据。我们可以在mainfest文件中<code>&lt;provider&gt;</code>标签的属性或子标签配置。许可可以针对整个provider或者特定的表或者特定的记录配置。</p>
+
+<p>声明许可使用<code>&lt;permission&gt;</code>标签，例如：
+<code>&lt;permission android:name="com.example.app.provider.permission.READ_PROVIDER"&gt;</code></p>
+
+<p>下面描述了provider的详细许可设置：</p>
+
+<ul>
+<li>单个provider读写许可（Single read-write provider-level permission）
+该许可是控制整个provider的读写许可。在<code>&lt;provider&gt;</code>标签中的<code>android:permission</code>属性中设置。</li>
+<li>provider级别分开的读或写权限（Separate read and write provider-level permission
+）
+在<code>&lt;provider&gt;</code>标签中的<code>android:readPermission</code>属性中设置读许可；在<code>&lt;provider&gt;</code>标签中的<code>android:writePermission</code>属性中设置写许可。这两个许可优于android:permission设置的许可。</li>
+<li>路径级别的许可（Path-level permission）
+读或写或读写指定URI的许可。在<code>&lt;provider&gt;</code>标签中的<code>&lt;path-permission&gt;</code>子标签中设置。该级别权限优于上面的两个许可。</li>
+<li>
+<p>临时许可（Temporary permission）
+授予程序临时获取数据的许可。
+在<code>&lt;provider&gt;</code>标签中的<code>android:grantUriPermissions</code>属性中设置，或者在<code>&lt;provider&gt;</code>标签中的<code>&lt;grant-uri-permission&gt;</code>子标签中添加一个或多个。
+若使用了临时许可，每当从provider移除对一个URI的支持时，必须调用<code>Context.revokeUriPermission()</code>，该URI和临时许可相关。若该属性设置了true，则系统支持授权临时许可，且会覆盖其它任何许可（provider级别或路径级别的）。
+若设置了false，就需要在<code>&lt;provider&gt;</code>标签中的<code>&lt;grant-uri-permission&gt;</code>子标签中添加一个或多个。每一个子标签指定一个或多个URIs有临时被访问的许可。</p>
+
+<p>为了在一个程序中委托临时访问许可，intent必须包含<code>FLAG_GRANT_READ_URI_PERMISSION</code>和<code>FLAG_GRANT_WRITE_URI_PERMISSION</code>中的一个或两个flags（通过<code>setFlags()</code>设置）。</p>
+
+<p>若没设置<code>android:grantUriPermissions</code>属性，则被认为是false。</p>
+</li>
+</ul>
+
+<h1>
+<a id="user-content-provider标签" class="anchor" href="#provider%E6%A0%87%E7%AD%BE" aria-hidden="true"><span class="octicon octicon-link"></span></a><code>&lt;provider&gt;</code>标签</h1>
+
+<p>我们知道四大组件都需要在mainfest文件中配置，ContentProvider的实现类通过<code>&lt;provider&gt;</code>标签配置。该标签中还包括一些重要的属性和子标签：</p>
+
+<ul>
+<li>
+<code>android:authorities</code>
+用于在这个系统中识别provider（先识别应用程序）。</li>
+<li>
+<code>android:name</code>
+ContentProvider的实现类类名。</li>
+<li>
+<p>Permission
+上面已经详细描述，主要包括：</p>
+
+<pre><code>- `android:grantUriPermssions`;
+- `android:permission`;
+- `android:readPermission`;
+- `android:writePermission`。
+</code></pre>
+</li>
+<li>
+<p>启动和控制属性</p>
+
+<ul>
+<li>
+<code>android:enabled</code> 是否允许实例化</li>
+<li>
+<code>android:exported</code> 外部是否能使用</li>
+<li>
+<code>android:initOrder</code> integer值，表示在同一个进程中被初始化的顺序，值越大越早被初始化</li>
+<li>
+<code>android:multiProcess</code> 是否允许在多个进程中实例化</li>
+<li>
+<code>android:process</code> 所在的进程</li>
+<li>
+<code>android:syncable</code> </li>
+</ul>
+</li>
+<li>
+<p>信息属性</p>
+
+<ul>
+<li>
+<code>android:icon</code> 图标</li>
+<li>
+<code>android:label</code> 名称</li>
+</ul>
+</li>
+</ul>
+
+<h1>
+<a id="user-content-总结" class="anchor" href="#%E6%80%BB%E7%BB%93" aria-hidden="true"><span class="octicon octicon-link"></span></a>总结</h1>
+
+<p>ContentResovler和ContentProvider之间的协作关系以查询SQLite数据库为例进行描述:</p>
+
+<p>ContentResovler对象的<code>query()</code>方法中的参数URI，通过URI中的权限authority可以找到对应的ContentProvider实现类，对该类实例化并调用<code>query()</code>方法，在<code>query()</code>方法中通过<code>UriMatcher.match()</code>方法匹配Uri，匹配成功后交给SQLite数据库的查询方法，并返回Cursor，然后通过ContentProvider实例返回该Cursor给调用者。可以看到通过权限可以确定一个provider的，因此一个程序中可以包含多个providers。</p>
+
+<p>遗留问题：</p>
+
+<ul>
+<li>多线程安全问题。</li>
+</ul>
+</article></body></html>

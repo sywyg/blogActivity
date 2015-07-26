@@ -1,0 +1,217 @@
+[toc]
+
+本文翻译自Android官方文档，话不多说，直接上干货。
+
+一个Service是一个长期可以在后台执行（当然不需要提供UI）的应用组件。其它组件可以启动service，即使切换到另一个应用，该service仍然可以在后台执行。另外，其它组件可以绑定一个service进行交互，甚至可以进行进程间通信(interprocess communication,IPC)。正如activity一样，service也必须在AndroidManifest.xml中进行注册。
+
+- service不是单独的进程，除非特别指定，否则它在应用程序的进程中。
+- service不是线程，但是它经常开启一个线程处理任务。
+
+一个service本质上可以分为两种：
+
+- Started
+	即启动方式的service。当一个组件通过`startService()`方法启动service时，该service为"started"。一旦service启动，则无论启动它的组件是否被销毁，该service都能独立运行。通常，这种方式的service执行一些简单的操作，且不带有返回值。例如，它能够下载/上传文件，当操作完成时，该service需要停止。
+- Bound
+	即绑定方式的service。当组件通过`bindService()`方法绑定一个service时，该service为绑定service。绑定service允许组件和绑定service进行交互，例如发送请求，获得结果，甚至跨进程通信（IPC）。一个绑定service一旦被绑定，该service就会处于运行状态。多个组件可以绑定一个service，但只有所有的组件都解绑时，该service才销毁。
+
+虽然这里是分开介绍这两种service，但是这两种方式也可以结合在一起使用。通常的做法是先启动一个service，然后在需要该service时再绑定。
+
+service同activity一样可以在同一应用程序中或其它应用程序中被启动，绑定，或两者同时操作。当然，service也可以设置为私有的，详细在下面介绍。
+
+注意：
+	service不会创建新的线程，不会运行在其它进程中（除非开发人员指定），它运行在主线程中。这就意味着，service不能执行长时间的操作（占用CPU，阻塞操作），若service需要长时间执行，我们可以在一个子线程中执行service，否则会造成应用程序无反应（Application Not Responding，ANR）错误。
+
+*使用service还是线程？*
+service是一个能够运行在后台的简单组件（即使用户不和我们的程序交互）。如果你需要执行的任务不在主线程并且只在与用户交互的过程中才执行，此时你应该使用线程，而不用service（当然service也可以实现）。线程依赖创建它的组件，组件若被销毁，线程肯定也不存在了。因此在service中开启的线程当service销毁时，线程就会销毁，而且线程不好控制。请记住，默认情况下，service是执行在主线程中，因此你通常仍然需要创建子线程执行service任务（若执行阻塞操作或耗时操作）。
+
+#基本用法
+
+为了创建一个service，我们必须实现一个Service的子类（或Service的存在的子类）。通常，需要覆盖一些父类的回调方法，以此实现service生命周期的关键部分，同时如果需要的话，还要提供组件绑定它的机制（后面有详细介绍绑定的过程）。我们应该覆盖的主要方法如下：
+
+- `onStartCommand()`
+	当一个组件通过`startService()`启动一个service时，系统会回调该方法。一旦该方法执行，service就会在后台无限制地执行。因此，你必须负责对该service的停止（通过调用`stopSelf()`和`stopService()`）。如果只是想绑定service，则不需要实现该方法。
+	每次`startService()`都会执行该方法。
+- `onBind()`
+	当另一个组件想要通过`bindService()`绑定service时，系统会回调该方法。该方法需要实现一个接口，通过返回IBinder对象实现用户通信。若不需要绑定service则返回null即可，否则必须实现。
+- `onCreate()`
+	当service第一次被创建时，系统会调用该方法，该方法在上述两个方法之前调用，且只会执行一次，用来一次性的操作。若service处于运行状态，则系统不会回调该方法。
+- `onDestroy()`
+	当service不再被使用，准备销毁时，系统调用该方法销毁service。这是service最后被调用的方法，通常用于释放资源。
+
+当组件通过`startService()`方式启动service时，系统就会回调`onStartCommand()`方法，然后直到该service方法调用`stopSelf()`结束自己或另一个组件调用`stopService()`方法结束该service，它才会停止并被销毁。
+
+当一个组件通过`bindService()`方式创建service时（系统不会调用`onStartCommand()`），那么只要该组件绑定它，它就一直处于运行状态。一旦service被所有的组件解绑，那么系统就会销毁该service。
+
+系统会在内存不足时强制杀死service，以保证当前获得焦点的activity能够获得系统资源。若绑定service的activity处于运行状态，则不太可能销毁该service，同时若该service被声明为前台service（run in the foreground），则它最不可能被杀死。否则，started service运行时间越长，被销毁的概率越大（运行时间越长所在后台任务中的位置越低，越容易被销毁）。因此，如果我们需要启动service的话，最好要设置好如何通过系统重新启动该service。如果系统销毁了service，系统通过`onStartCommand()`方法的返回值判断是否要重新启动该service（关于重启稍后详解）。
+
+android系统企图维持拥有service（started的或绑定的）进程尽可能长的时间。当内存不足需要kill进程时，下面几种情况，拥有service的进程生存的概率会提高：
+
+- 当service在执行`onCreate(), onStartCommand(), or onDestroy()`代码时，宿主进程将会变成前台进程，以确保这些方法能够在被kill之前运行完；
+- 若service已经启动，宿主进程重要性要低于正在用户屏幕上显示的进程低，但是比其它不可见的进程要高。通常只有少说的进程可见，这就意味着该宿主进程不会被杀死，除非内存严重不足。然而，由于用户没有直接感觉到后台service的存在，因此，该service（宿主进程）会是一个被kill的候选对象，我们要防止好这种情况发生。运行时间越长被杀死的概率越大，运行的时间足够长的话，肯定会被kill。
+- 若客户端绑定一个service，那么该service的宿主进程的重要性比该客户端的进程重要（比最重要的客户端还要重要）。即，若其中绑定service的一个客户端处于可见状态，则service被认为是可见的（重要的）。客户端的重要性影响service的重要性会根据下面的参数调整：`BIND_ABOVE_CLIENT, BIND_ALLOW_OOM_MANAGEMENT, BIND_WAIVE_PRIORITY, BIND_IMPORTANT, and BIND_ADJUST_WITH_ACTIVITY`。
+- 可以通过`startForeground(int, Notification)`设置一个service为前台service，这种情况下，系统会认为拥有该service的进程正和用户进行交互，当内存不足时不会被kill。尽管理论上是有可能在内存严重不足时该前台service被kill，但是实际上这种情况往往不会发生。
+- 当有其他组件在该进程中，该进程的重要性当然会比只有service一个的重要。
+
+上面情况就说明了，在内存严重不足时，service可能会被kill，因此要做好准备如何处理这些情况。可以通过`onStartCommand()`的返回值决定后续是否在执行以及如何执行service。
+
+下面将详细介绍如何创建service（两种），以及如何使用。
+
+##在manifest文件中声明service
+
+同activities（或其他组件）一样，若要使用service必须在配置文件中声明被使用的service。
+
+在`<application>`标签中通过`<service>`子标签可以声明，如下：
+
+```xml
+<manifest ... >
+  ...
+  <application ... >
+      <service android:name=".ExampleService" />
+      ...
+  </application>
+</manifest>
+```
+下面详细介绍`<service>`标签中的各个属性。
+###`<service>`
+`<service>`标签中有如下属性：
+
+- `Android:enabled="true/false"`
+	表明service是否可以由系统实例化，默认"true"为可以。
+	需要注意的是`<application>`标签中同样有该属性，且作用于整理应用组件。这样，只有两个都是"true"（默认是的），service才能实例化。
+- `Android:exported="true/false"`
+	是否其他应用程序中的组件可以调用或和该service进行交互，"true"表示可以，"false"表示不可以。当为"false"时，同一个或相同user ID的应用程序中的组件才能启动或绑定它。
+	默认值依赖于该标签是否有intent filters。若没有的话则表明它必须通过指定类名才能调用该service，也就是说只能在应用内部使用（其它程序不知道该类名），此时默认值为"false"。否则，默认值为"true"。
+	当然这个属性不是唯一限定service是否可以被外部程序使用。我们可以通过permission属性（下面有介绍）限制外部程序和该service之间的交互。
+- `Android:icon`
+	代表service的图标，值为图片文件名。若不设置这个的话，`<application>`标签中的图标为该service默认图标。同样这个图标又是其子标签（`<intent-filter>`）的默认值。
+- `Android:isolatedProcess="true/false"`
+	若设置为"true"，则service将会在一个特殊的进程中运行，该进程独立于系统其他进程，且没有自己的权限。其他组件和该service唯一的通信方式是通过Service API（启动和绑定）。
+- `Android:label="String"`
+	该service呈现给用户的名字。若不设置这个的话，`<application>`标签中的为该service默认名字。同样这个名字又是其子标签（`<intent-filter>`）的默认值。
+- `Android:name`
+	我们实现的Service子类的类名，应该是全称。但是，若包名在根标签`<manifest>`中设置的话，则可以简写为点加类名。
+	一旦你发布你的应用后就不应该再改变其值（除非exported属性设置为false）。原因很简单，若改变的话，通过Intent指定的类名也需要相应的修改。
+	**该值没有默认值，必须指定**。
+- `Android:permission="String"`
+	权限的名称(String类型)，其他组件若想启动或绑定该service必须有该权限。若没有该权限，`startService()/bindService()/stopService()`就不会起作用，且Intent对象也不会传递给service。若没有设置，则将使用`<application>`标签中权限，若都没有设置则service不受权限的保护。
+- `Android:process="String"`
+	该service所在进程的名字。通常，所有的组件都运行在应用程序创建的进程中，和应用程序包名相同的名字。在`<application>`标签中的process属性可以设置其它默认进程。但是组件可以设置自己的程序，从而能够实现多进程传递应用程序。
+	若设置为以":"开头的名字，则该进程是应用程序一个新的私有的进程，同时它会在需要时被创建，service运行在该进程中。若设置为以小写字母开头的名字，该service会运行在一个全局的进程（名字为该属性值）中，这样能够使其他应用程序的组件共享该进程，减少资源使用。
+
+另外，为了确保安全，通常**使用显示Intent方式去启动或绑定service，并且不要声明intent filters**。若非得隐士方式的话，你可以使用intent filters并且需要在Intent中排除组件名，但是你必须设置intent的`setPackage()`方法指定包名，来保证充分的无歧义条件启动目标service。
+
+另外通过`android:exported`属性避免其它应用程序使用你的service，即使它们指定显示Intent。通常我们的服务不希望外部程序使用，因此该值设置为"false"。
+##Started Service
+
+前面介绍了通过`startService()`方式启动的service为"started"方式，该方法会传递一个Intent对象，而在Service中系统会调用`onStartCommand()`方法接收该参数。
+
+当started service启动之后，它的生命周期独立于启动它的组件，并且该service能够不受限制地运行在后台，即使启动它的组件已经被销毁。因此，该service必须在完成任务时调用`stopSelf()`或另一个组件通过`stopService()`停止它。
+
+注意：默认情况下，service会运行在主线程中，因此当执行频繁的或阻塞的操作时，需要开启一个新的子线程来完成service任务。
+
+通常，有两个类可以用于继承并创建started service：
+
+- Service类
+	所有services的抽象基类。通过这种方式，开启新线程执行service任务是非常重要的，以防阻塞UI线程。
+- IntentService类
+	这是Service类的一个子类，该类使用一个子线程处理所有的请求，且同一时间只处理一个请求。如果你不需要你的service同时处理多个请求的话这种方式实现的service最好。你只需要实现`onHandleIntent()`方法来接收传递过来的intent，那么就可以在后台运行处理了。
+	IntentService是一个抽象类，但是除了`onHandleIntent()`方法之外的方法都实现了。
+
+下面介绍如何实现上面的描述。
+
+###继承IntentService类
+
+IntentService类是一个抽象类，是service处理异步请求的一个基类。在客户端通过`startService()`方式发送请求时，IntentService实现类实例在一个工作线程中处理所有的请求（每次只处理一个请求），并且在执行完所有操作时，自动停止销毁。
+
+工作队列处理模式常用于不在主线程中执行的任务。IntentService类简化了这种模式，并充分利用了这种机制。为了使用这种方法，需要继承IntentService类并实现`onHandleIntent(Intent)`方法（而不是覆盖`onStartCommand()`方法）。IntentService将开启一个工作线程处理接收到的Intents，并在合适的时候停止service。所有的请求都在一个工作线程中，它们可能花费很长时间（但是不会阻塞主线程），但是每次只一个请求被执行。
+
+通常来说，我们不需要service同时处理多个请求，因此通过这种方式可能是最好的。
+IntentService会完成以下内容：
+
+- 创建一个默认的子线程（不同于程序的主线程）处理通过`onStartCommand()`传递过来的所有Intent对象。
+- 创建一个工作队列(Handler实现的)，该队列一次只处理一个Intent对象（通过`onHandleIntent()`处理），因此不用担心多线程造成的问题。
+- 在处理完所有的请求时，该service会自动停止，因此，我们不用再通过stop方式停止。
+- 提供默认的实现`onBind()`方法，返回null。
+- 提供一个默认的实现`onStartCommand()`，该方法能够将intent对象发送到work队列中，然后通过`onHandleIntent()`处理。
+
+根据上面可知，我们仅仅需要实现`onHandleIntent()`处理来处理客户端传递过来的Intent对象。当然还需要一个构造器调用父类的构造器，为子线程命名（只在调试中有用），该构造器是必须的。
+
+如果我们需要实现其他的回调方法的话，例如`onCreate(),onStartCommand(),onDestroy()`，需要调用父类对应的方法。例如`onStartCommand()`必须返回父类方法，这样系统才能管理好IntentService的生命周期。注意通常不需要调用父类的`onStartCommand()`方法。
+
+IntentService中其它的方法有`onBind()`（默认返回null)，`setIntentRedilivery(boolean)`（若为true，则`onStartCommand()`返回START_REDELIVER_INTENT，因此在`onHandleIntent()`返回之前进程被杀死的话，进程将重启并传递最近的一个intent。若为false（默认），则`onStartCommand()`返回START_NOT_STICKY）。
+
+
+代码就不贴了，只说明一下测试结果。
+
+1. 通过查看源码可知，IntentService中调用了`stopSelf(int)`，而且测试表明在完成任务时可以自动销毁（调用`onDestroy()`方法）;
+2. 每次只执行一个Intent对象请求；
+
+下面将介绍如何使用继承Service类实现service，该service适合同时处理多个start请求。
+
+###继承Service类
+
+通过继承Service类实现service可以处理多线程问题。和继承IntentService类不同的是，我们需要自己实现`onStartCommand()`方法，这样一来我们可以同时处理多线程问题，而不是在工作队列中等待。
+
+`onStartCommand()`方法必须有一个int返回值，该返回值描述了当系统kill该service之后系统应该如何继续使用该service（IntentService中有默认值）。该返回值必须是取一下内容之一：
+
+1. START_NOT_STICKY（值为2）
+	设置该值，如果在返回过`onStartCommand()`方法之后系统杀死了该service，则该Service不会再被系统重建，除非有后续的intents。因此在不需要重新运行service或应用程序能够重新启动该service的情况下，这个返回值是最安全的选择。
+
+	这种设置也是有意义的，当一开始启动service时完成一些任务，当内存不足时被杀死，之后我们可以在内存够用的情况下再启动它，继续完成任务。
+2. START_STICKY（值为1）
+	设置该值，如果在返回过`onStartCommand()`方法之后系统杀死了该service（此时记录该service为started 状态），则之后系统会尝试重新创建该service并创建之后一定调用`onStartCommand()`方法,但是不会传递最后一个Intent对象，而是用值为null的Intent对象（因此需要小心判断），除非有后续的intents。
+	这种设置适合像媒体播放器之类的service，不需要执行命令，只要独立运行并等待任务。
+
+3. START_REDELIVER_INTENT（值为3）
+	设置该值，如果在返回过`onStartCommand()`方法之后系统杀死了该service，则之后系统会重新创建该service并调用`onStartCommand()`方法,且该Intent值为最后一次Intent对象。这种适合需要立即执行的任务。
+
+每次请求都会执行`onStartCommand()`方法，然而只要一次stopService()或stopSelf()就能停止。
+
+
+####停止一个service
+显然，这里是指继承Service类。
+started方式启动的service必须管理好自己的生命周期。也就是，除非系统在回收内存，否则service不会自己停止或销毁。因此必须通过`stopSelf()`或在其它组件中调用`StopService()`，一旦执行了这两个方法中的一个系统就会尽可能地销毁该service。
+
+在处理多个请求时，若执行完一个请求时调用`stopSelf()`方法或`StopService()`的话，后续的请求就就不会再执行，因此，通常调用`stopSelf(int)`方法,根据ID（`onStartCommand()`方法中传递的startId），停止指定的一次请求。
+
+注意：当service完成任务时，停止该service（自身或外界）是必要的，这样能够避免浪费资源以及耗电，包括在started之后又绑定的service。
+
+代码不再给出，结果测试：
+
+1. service默认执行在主线程中，因此若service需要长时间的操作会造成ANR问题（BACK也没反应）；
+2. `startService()`方法是异步执行，立刻执行它下面的语句；
+3. 无论多少客户端（例如activity），不管在不在一个进程中，启动service时，只要没有执行`stopService()`（任意客户端都能执行）或`stopself()`，`onCreate()`只执行一次，即service实例只有一个。除非service被kill(不执行`onDestroy()`)，否则`onDestroy()`也只执行一次。
+4. `stopService()/startService()`不会有任何异常（只要输入的是Intent对象），但是在错误输入的情况下没有任何反应。
+5. 关于提到的service可以同时处理多个请求，而Intentservice只能处理一个的问题，我的理解是service开启线程的话可以并发执行，而IntentService自身是一个工作队列，不用再开启线程，当然也可以开启线程。
+6. service和IntentService中若开启线程的话，不再受到service的限制，即使service销毁，线程依然可以运行。
+
+#管理Service生命周期
+
+由于service是运行在后台的，因此管理service的生命周期需要加倍小心。
+
+有两种方式的service，因此从创建到销毁有两种生命周期：
+
+- started service
+	对于这种方式的service，当另一个组建调用`startService()`时，该service被创建，然后该service不受限制的运行，同时我们必须在该service完成任务时停止它。当service被停止时，系统就会销毁它。
+- bound service
+	对于这种方式的service，当另一个组建调用`bindService()`时，该service被创建，客户端通过IBinder接口和该service通信。客户端可以通过`unBindService()`解除绑定。多个客户端可以绑定同一个service，当所有的客户端都解绑时，系统自动销毁该service，不用客户端销毁。
+
+当然这两种方式不是绝对分开的。我们可以先启动一个service然后再进行绑定。这种情况下调用`stopSelf()`方法或`StopService()`方法只有在所有组建都解绑该service时才会停止该service。（这一部分在下一章有更详细的介绍）
+
+##实现周期方法
+
+同activity一样，我们可以实现生命周期回调方法来监控service状态的改变，以到达在合适的时间做合适的事。
+
+如下图。左边部分描述的是通过`startService()`方法启动的service的生命周期，右边部分是通过`bindService()`方法绑定的service的生命周期。
+
+
+- The entire lifetime
+	从创建到销毁的过程。一般在`onCreate()`完成初始化，在`onDestroy()`中释放所有资源。例如，音乐service在`onCreate()`创建一个线程来播放音乐，在`onDestroy()`中停止线程。无论在`startService()`还是`bindService()`都会调用`onCreate()`和`onDestroy()`。
+- The active lifetime
+	开始于`onStartCommand()`或`onBind()`。各自通过各自的方式传递Intent对象。
+	started service的active lifetime的结束时间是entire lifetime结束时间。bound service active lifetime的结束时间在返回`onUnbind()`时。
+
+注意：
+
+- 在service生命周期中没有`onStop()`回调方法。
+- 虽然上图的生命周期是分开的，但是一个started service在调用`onStartCommand()`（通过`startService()`）之后，仍然可以调用`onBind()`（通过`bindService()`）。

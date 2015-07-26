@@ -860,21 +860,22 @@ body .markdown-body
   float: left;
   margin: 0.3em 0 0.25em -1.6em;
   vertical-align: middle;
-}</style><title>Service</title></head><body><article class="markdown-body"><p>定义为翻译文章。
-参考文献：</p>
+}</style><title>Service</title></head><body><article class="markdown-body"><p>[toc]</p>
 
-<p>Android 官方文档</p>
+<p>本文翻译自Android官方文档，话不多说，直接上干货。</p>
 
-<h1>
-<a id="user-content-services" class="anchor" href="#services" aria-hidden="true"><span class="octicon octicon-link"></span></a>Services</h1>
+<p>一个Service是一个长期可以在后台执行（当然不需要提供UI）的应用组件。其它组件可以启动service，即使切换到另一个应用，该service仍然可以在后台执行。另外，其它组件可以绑定一个service进行交互，甚至可以进行进程间通信(interprocess communication,IPC)。正如activity一样，service也必须在AndroidManifest.xml中进行注册。</p>
 
-<p>一个Service是一个长期可以在后台执行（当然不需要提供UI）的应用组件。其它组件可以启动service，即使切换到另一个应用，该service仍然可以在后台执行。另外，其它组件可以绑定一个service进行交互，甚至可以进行进程间通信(interprocess communication,IPC)。</p>
+<ul>
+<li>service不是单独的进程，除非特别指定，否则它在应用程序的进程中。</li>
+<li>service不是线程，但是它经常开启一个线程处理任务。</li>
+</ul>
 
 <p>一个service本质上可以分为两种：</p>
 
 <ul>
 <li>Started
-即启动方式的service。当一个组件通过<code>startService()</code>方法启动service时，该service为"started"。一旦service启动，则无论启动它的组件是否被销毁，该service都能独立运行。通常，这种方式的service执行一些简单的操作，且不带有返回值。例如，它能够下载/上传文件，当操作完成时，该service需要自我停止。</li>
+即启动方式的service。当一个组件通过<code>startService()</code>方法启动service时，该service为"started"。一旦service启动，则无论启动它的组件是否被销毁，该service都能独立运行。通常，这种方式的service执行一些简单的操作，且不带有返回值。例如，它能够下载/上传文件，当操作完成时，该service需要停止。</li>
 <li>Bound
 即绑定方式的service。当组件通过<code>bindService()</code>方法绑定一个service时，该service为绑定service。绑定service允许组件和绑定service进行交互，例如发送请求，获得结果，甚至跨进程通信（IPC）。一个绑定service一旦被绑定，该service就会处于运行状态。多个组件可以绑定一个service，但只有所有的组件都解绑时，该service才销毁。</li>
 </ul>
@@ -886,6 +887,9 @@ body .markdown-body
 <p>注意：
     service不会创建新的线程，不会运行在其它进程中（除非开发人员指定），它运行在主线程中。这就意味着，service不能执行长时间的操作（占用CPU，阻塞操作），若service需要长时间执行，我们可以在一个子线程中执行service，否则会造成应用程序无反应（Application Not Responding，ANR）错误。</p>
 
+<p><em>使用service还是线程？</em>
+service是一个能够运行在后台的简单组件（即使用户不和我们的程序交互）。如果你需要执行的任务不在主线程并且只在与用户交互的过程中才执行，此时你应该使用线程，而不用service（当然service也可以实现）。线程依赖创建它的组件，组件若被销毁，线程肯定也不存在了。因此在service中开启的线程当service销毁时，线程就会销毁，而且线程不好控制。请记住，默认情况下，service是执行在主线程中，因此你通常仍然需要创建子线程执行service任务（若执行阻塞操作或耗时操作）。</p>
+
 <h1>
 <a id="user-content-基本用法" class="anchor" href="#%E5%9F%BA%E6%9C%AC%E7%94%A8%E6%B3%95" aria-hidden="true"><span class="octicon octicon-link"></span></a>基本用法</h1>
 
@@ -894,7 +898,8 @@ body .markdown-body
 <ul>
 <li>
 <code>onStartCommand()</code>
-当一个组件通过<code>startService()</code>启动一个service时，系统会回调该方法。一旦该方法执行，service就会在后台无限制地执行。因此，你必须负责对该service的停止（通过调用<code>stopSelf()</code>和<code>stopService()</code>）。如果只是想绑定service，则不需要实现该方法。</li>
+当一个组件通过<code>startService()</code>启动一个service时，系统会回调该方法。一旦该方法执行，service就会在后台无限制地执行。因此，你必须负责对该service的停止（通过调用<code>stopSelf()</code>和<code>stopService()</code>）。如果只是想绑定service，则不需要实现该方法。
+每次<code>startService()</code>都会执行该方法。</li>
 <li>
 <code>onBind()</code>
 当另一个组件想要通过<code>bindService()</code>绑定service时，系统会回调该方法。该方法需要实现一个接口，通过返回IBinder对象实现用户通信。若不需要绑定service则返回null即可，否则必须实现。</li>
@@ -910,7 +915,19 @@ body .markdown-body
 
 <p>当一个组件通过<code>bindService()</code>方式创建service时（系统不会调用<code>onStartCommand()</code>），那么只要该组件绑定它，它就一直处于运行状态。一旦service被所有的组件解绑，那么系统就会销毁该service。</p>
 
-<p>系统会在内存不足时强制杀死该service，以保证当前获得焦点的activity能够获得系统资源。若绑定service的activity处于运行状态，则不太可能销毁该service，同时若该service被声明为前台service（run in the foreground，稍后讨论），则它最不可能被杀死。否则，started service运行时间越长，被销毁的概率越大（运行时间越长所在后台任务中的位置越低，越容易被销毁）。因此，如果我们需要启动service的话，最好要设置好如何通过系统重新启动该service。如果系统销毁了service，系统通过<code>onStartCommand()</code>方法的返回值判断是否要重新启动该service（关于重启稍后详解）。</p>
+<p>系统会在内存不足时强制杀死service，以保证当前获得焦点的activity能够获得系统资源。若绑定service的activity处于运行状态，则不太可能销毁该service，同时若该service被声明为前台service（run in the foreground），则它最不可能被杀死。否则，started service运行时间越长，被销毁的概率越大（运行时间越长所在后台任务中的位置越低，越容易被销毁）。因此，如果我们需要启动service的话，最好要设置好如何通过系统重新启动该service。如果系统销毁了service，系统通过<code>onStartCommand()</code>方法的返回值判断是否要重新启动该service（关于重启稍后详解）。</p>
+
+<p>android系统企图维持拥有service（started的或绑定的）进程尽可能长的时间。当内存不足需要kill进程时，下面几种情况，拥有service的进程生存的概率会提高：</p>
+
+<ul>
+<li>当service在执行<code>onCreate(), onStartCommand(), or onDestroy()</code>代码时，宿主进程将会变成前台进程，以确保这些方法能够在被kill之前运行完；</li>
+<li>若service已经启动，宿主进程重要性要低于正在用户屏幕上显示的进程低，但是比其它不可见的进程要高。通常只有少说的进程可见，这就意味着该宿主进程不会被杀死，除非内存严重不足。然而，由于用户没有直接感觉到后台service的存在，因此，该service（宿主进程）会是一个被kill的候选对象，我们要防止好这种情况发生。运行时间越长被杀死的概率越大，运行的时间足够长的话，肯定会被kill。</li>
+<li>若客户端绑定一个service，那么该service的宿主进程的重要性比该客户端的进程重要（比最重要的客户端还要重要）。即，若其中绑定service的一个客户端处于可见状态，则service被认为是可见的（重要的）。客户端的重要性影响service的重要性会根据下面的参数调整：<code>BIND_ABOVE_CLIENT, BIND_ALLOW_OOM_MANAGEMENT, BIND_WAIVE_PRIORITY, BIND_IMPORTANT, and BIND_ADJUST_WITH_ACTIVITY</code>。</li>
+<li>可以通过<code>startForeground(int, Notification)</code>设置一个service为前台service，这种情况下，系统会认为拥有该service的进程正和用户进行交互，当内存不足时不会被kill。尽管理论上是有可能在内存严重不足时该前台service被kill，但是实际上这种情况往往不会发生。</li>
+<li>当有其他组件在该进程中，该进程的重要性当然会比只有service一个的重要。</li>
+</ul>
+
+<p>上面情况就说明了，在内存严重不足时，service可能会被kill，因此要做好准备如何处理这些情况。可以通过<code>onStartCommand()</code>的返回值决定后续是否在执行以及如何执行service。</p>
 
 <p>下面将详细介绍如何创建service（两种），以及如何使用。</p>
 
@@ -949,7 +966,7 @@ body .markdown-body
 当然这个属性不是唯一限定service是否可以被外部程序使用。我们可以通过permission属性（下面有介绍）限制外部程序和该service之间的交互。</li>
 <li>
 <code>Android:icon</code>
-代表service的图标，具体取值暂未搞明白（？）。若不设置这个的话，<code>&lt;application&gt;</code>标签中的图标为该service默认图标。同样这个图标又是其子标签（<code>&lt;intent-filter&gt;</code>）的默认值。</li>
+代表service的图标，值为图片文件名。若不设置这个的话，<code>&lt;application&gt;</code>标签中的图标为该service默认图标。同样这个图标又是其子标签（<code>&lt;intent-filter&gt;</code>）的默认值。</li>
 <li>
 <code>Android:isolatedProcess="true/false"</code>
 若设置为"true"，则service将会在一个特殊的进程中运行，该进程独立于系统其他进程，且没有自己的权限。其他组件和该service唯一的通信方式是通过Service API（启动和绑定）。</li>
@@ -958,7 +975,7 @@ body .markdown-body
 该service呈现给用户的名字。若不设置这个的话，<code>&lt;application&gt;</code>标签中的为该service默认名字。同样这个名字又是其子标签（<code>&lt;intent-filter&gt;</code>）的默认值。</li>
 <li>
 <code>Android:name</code>
-我们实现的Service子类的类名，应该是全称。但是，若包名在<code>根标签&lt;manifest&gt;</code>中设置的话，则可以简写为点加类名。
+我们实现的Service子类的类名，应该是全称。但是，若包名在根标签<code>&lt;manifest&gt;</code>中设置的话，则可以简写为点加类名。
 一旦你发布你的应用后就不应该再改变其值（除非exported属性设置为false）。原因很简单，若改变的话，通过Intent指定的类名也需要相应的修改。
 <strong>该值没有默认值，必须指定</strong>。</li>
 <li>
@@ -987,9 +1004,10 @@ body .markdown-body
 
 <ul>
 <li>Service类
-所有services的基类。通过这种方式，开启新线程执行service任务是非常重要的，以防阻塞UI线程。</li>
+所有services的抽象基类。通过这种方式，开启新线程执行service任务是非常重要的，以防阻塞UI线程。</li>
 <li>IntentService类
-这是Service类的一个子类，该类使用一个子线程处理所有的请求，且同一时间只处理一个请求。如果你不需要你的service同时处理多个请求的话这种方式实现的service最好。你只需要实现<code>onHandleIntent()</code>方法来接收传递过来的intent，那么就可以在后台运行处理了。</li>
+这是Service类的一个子类，该类使用一个子线程处理所有的请求，且同一时间只处理一个请求。如果你不需要你的service同时处理多个请求的话这种方式实现的service最好。你只需要实现<code>onHandleIntent()</code>方法来接收传递过来的intent，那么就可以在后台运行处理了。
+IntentService是一个抽象类，但是除了<code>onHandleIntent()</code>方法之外的方法都实现了。</li>
 </ul>
 
 <p>下面介绍如何实现上面的描述。</p>
@@ -997,33 +1015,33 @@ body .markdown-body
 <h3>
 <a id="user-content-继承intentservice类" class="anchor" href="#%E7%BB%A7%E6%89%BFintentservice%E7%B1%BB" aria-hidden="true"><span class="octicon octicon-link"></span></a>继承IntentService类</h3>
 
+<p>IntentService类是一个抽象类，是service处理异步请求的一个基类。在客户端通过<code>startService()</code>方式发送请求时，IntentService实现类实例在一个工作线程中处理所有的请求（每次只处理一个请求），并且在执行完所有操作时，自动停止销毁。</p>
+
+<p>工作队列处理模式常用于不在主线程中执行的任务。IntentService类简化了这种模式，并充分利用了这种机制。为了使用这种方法，需要继承IntentService类并实现<code>onHandleIntent(Intent)</code>方法（而不是覆盖<code>onStartCommand()</code>方法）。IntentService将开启一个工作线程处理接收到的Intents，并在合适的时候停止service。所有的请求都在一个工作线程中，它们可能花费很长时间（但是不会阻塞主线程），但是每次只一个请求被执行。</p>
+
 <p>通常来说，我们不需要service同时处理多个请求，因此通过这种方式可能是最好的。
 IntentService会完成以下内容：</p>
 
 <ul>
 <li>创建一个默认的子线程（不同于程序的主线程）处理通过<code>onStartCommand()</code>传递过来的所有Intent对象。</li>
-<li>创建一个工作队列，该队列一次只处理一个Intent对象（通过<code>onHandleIntent()</code>处理），因此不用担心多线程造成的问题。</li>
+<li>创建一个工作队列(Handler实现的)，该队列一次只处理一个Intent对象（通过<code>onHandleIntent()</code>处理），因此不用担心多线程造成的问题。</li>
 <li>在处理完所有的请求时，该service会自动停止，因此，我们不用再通过stop方式停止。</li>
 <li>提供默认的实现<code>onBind()</code>方法，返回null。</li>
 <li>提供一个默认的实现<code>onStartCommand()</code>，该方法能够将intent对象发送到work队列中，然后通过<code>onHandleIntent()</code>处理。</li>
 </ul>
 
-<p>根据上面可知，我们仅仅需要实现<code>onHandleIntent()</code>处理来处理客户端传递过来的Intent对象。当然还需要一个构造器调用父类的构造器，为子线程命名，该构造器是必须的。</p>
+<p>根据上面可知，我们仅仅需要实现<code>onHandleIntent()</code>处理来处理客户端传递过来的Intent对象。当然还需要一个构造器调用父类的构造器，为子线程命名（只在调试中有用），该构造器是必须的。</p>
 
-<p>例子在这：：：：：：：：：：：：
-：：：：：：：：：：：：：：：：
-：：：：：：：：：：：：：：：：
-：：：：：：：：：：：：：：：：：：：</p>
+<p>如果我们需要实现其他的回调方法的话，例如<code>onCreate(),onStartCommand(),onDestroy()</code>，需要调用父类对应的方法。例如<code>onStartCommand()</code>必须返回父类方法，这样系统才能管理好IntentService的生命周期。注意通常不需要调用父类的<code>onStartCommand()</code>方法。</p>
 
-<p>如果我们需要实现其他的回调方法的话，例如<code>onCreate(),onStartCommand(),onDestroy()</code>，需要调用父类对应的方法。例如<code>onStartCommand()</code>必须返回父类方法：</p>
+<p>IntentService中其它的方法有<code>onBind()</code>（默认返回null)，<code>setIntentRedilivery(boolean)</code>（若为true，则<code>onStartCommand()</code>返回START_REDELIVER_INTENT，因此在<code>onHandleIntent()</code>返回之前进程被杀死的话，进程将重启并传递最近的一个intent。若为false（默认），则<code>onStartCommand()</code>返回START_NOT_STICKY）。</p>
 
-<div class="highlight highlight-java"><pre>@<span class="pl-smi">Override</span>
-<span class="pl-k">public</span> <span class="pl-k">int</span> onStartCommand(<span class="pl-smi">Intent</span> intent, <span class="pl-k">int</span> flags, <span class="pl-k">int</span> startId) {
-    <span class="pl-smi">Toast</span><span class="pl-k">.</span>makeText(<span class="pl-v">this</span>, <span class="pl-s"><span class="pl-pds">"</span>service starting<span class="pl-pds">"</span></span>, <span class="pl-smi">Toast</span><span class="pl-c1"><span class="pl-k">.</span>LENGTH_SHORT</span>)<span class="pl-k">.</span>show();
-    <span class="pl-k">return</span> <span class="pl-v">super</span><span class="pl-k">.</span>onStartCommand(intent,flags,startId);
-}</pre></div>
+<p>代码就不贴了，只说明一下测试结果。</p>
 
-<p><code>onHandleIntent()和onBind()</code>方法不要调用父类的方法。</p>
+<ol>
+<li>通过查看源码可知，IntentService中调用了<code>stopSelf(int)</code>，而且测试表明在完成任务时可以自动销毁（调用<code>onDestroy()</code>方法）;</li>
+<li>每次只执行一个Intent对象请求；</li>
+</ol>
 
 <p>下面将介绍如何使用继承Service类实现service，该service适合同时处理多个start请求。</p>
 
@@ -1060,6 +1078,19 @@ started方式启动的service必须管理好自己的生命周期。也就是，
 
 <p>注意：当service完成任务时，停止该service（自身或外界）是必要的，这样能够避免浪费资源以及耗电，包括在started之后又绑定的service。</p>
 
+<p>代码不再给出，结果测试：</p>
+
+<ol>
+<li>service默认执行在主线程中，因此若service需要长时间的操作会造成ANR问题（BACK也没反应）；</li>
+<li>
+<code>startService()</code>方法是异步执行，立刻执行它下面的语句；</li>
+<li>无论多少客户端（例如activity），不管在不在一个进程中，启动service时，只要没有执行<code>stopService()</code>（任意客户端都能执行）或<code>stopself()</code>，<code>onCreate()</code>只执行一次，即service实例只有一个。除非service被kill(不执行<code>onDestroy()</code>)，否则<code>onDestroy()</code>也只执行一次。</li>
+<li>
+<code>stopService()/startService()</code>不会有任何异常（只要输入的是Intent对象），但是在错误输入的情况下没有任何反应。</li>
+<li>关于提到的service可以同时处理多个请求，而Intentservice只能处理一个的问题，我的理解是service开启线程的话可以并发执行，而IntentService自身是一个工作队列，不用再开启线程，当然也可以开启线程。</li>
+<li>service和IntentService中若开启线程的话，不再受到service的限制，即使service销毁，线程依然可以运行。</li>
+</ol>
+
 <h1>
 <a id="user-content-管理service生命周期" class="anchor" href="#%E7%AE%A1%E7%90%86service%E7%94%9F%E5%91%BD%E5%91%A8%E6%9C%9F" aria-hidden="true"><span class="octicon octicon-link"></span></a>管理Service生命周期</h1>
 
@@ -1071,10 +1102,10 @@ started方式启动的service必须管理好自己的生命周期。也就是，
 <li>started service
 对于这种方式的service，当另一个组建调用<code>startService()</code>时，该service被创建，然后该service不受限制的运行，同时我们必须在该service完成任务时停止它。当service被停止时，系统就会销毁它。</li>
 <li>bound service
-对于这种方式的service，当另一个组建调用<code>bindService()</code>时，该service被创建客户端通过IBinder接口和该service通信。客户端可以通过<code>unBindService()</code>解除绑定。多个客户端可以绑定同一个service，当所有的客户端都解绑时，系统自动销毁该service，不用客户端销毁。</li>
+对于这种方式的service，当另一个组建调用<code>bindService()</code>时，该service被创建，客户端通过IBinder接口和该service通信。客户端可以通过<code>unBindService()</code>解除绑定。多个客户端可以绑定同一个service，当所有的客户端都解绑时，系统自动销毁该service，不用客户端销毁。</li>
 </ul>
 
-<p>当然这两种方式不是绝对分开的。我们可以先启动一个service然后再进行绑定。这种情况下调用<code>stopSelf()</code>方法或<code>StopService()</code>方法只有在所有组建都解绑该service时才会停止该service。</p>
+<p>当然这两种方式不是绝对分开的。我们可以先启动一个service然后再进行绑定。这种情况下调用<code>stopSelf()</code>方法或<code>StopService()</code>方法只有在所有组建都解绑该service时才会停止该service。（这一部分在下一章有更详细的介绍）</p>
 
 <h2>
 <a id="user-content-实现周期方法" class="anchor" href="#%E5%AE%9E%E7%8E%B0%E5%91%A8%E6%9C%9F%E6%96%B9%E6%B3%95" aria-hidden="true"><span class="octicon octicon-link"></span></a>实现周期方法</h2>
@@ -1083,14 +1114,9 @@ started方式启动的service必须管理好自己的生命周期。也就是，
 
 <p>如下图。左边部分描述的是通过<code>startService()</code>方法启动的service的生命周期，右边部分是通过<code>bindService()</code>方法绑定的service的生命周期。</p>
 
-<p>图：：：：：：：：：：：：：：：：
-：：：：：：：：：：：：：：：：
-：：：：：：：：：：：：：：：：：
-：：：：：：：：：：：：：：：</p>
-
 <ul>
 <li>The entire lifetime
-从创建到销毁的过程。一般在<code>onCreate()</code>完成初始化，在<code>onDestroy()</code>中释放所有资源。例如，音乐service在<code>onCreate()</code>创建一个线程来音乐，在<code>onDestroy()</code>中停止线程。无论在<code>startService()</code>还是<code>bindService()</code>都会调用<code>onCreate()</code>和<code>onDestroy()</code>。</li>
+从创建到销毁的过程。一般在<code>onCreate()</code>完成初始化，在<code>onDestroy()</code>中释放所有资源。例如，音乐service在<code>onCreate()</code>创建一个线程来播放音乐，在<code>onDestroy()</code>中停止线程。无论在<code>startService()</code>还是<code>bindService()</code>都会调用<code>onCreate()</code>和<code>onDestroy()</code>。</li>
 <li>The active lifetime
 开始于<code>onStartCommand()</code>或<code>onBind()</code>。各自通过各自的方式传递Intent对象。
 started service的active lifetime的结束时间是entire lifetime结束时间。bound service active lifetime的结束时间在返回<code>onUnbind()</code>时。</li>

@@ -1,0 +1,293 @@
+解读Android之Service(3)AIDL
+
+Android Interface Definition Language(AIDL)
+
+AIDL能够让我们定义自己的编程接口，该接口可以使得客户端和service之间进行跨进程通信(interprocess communication,IPC)。通常，在android中无法直接跨进程通信。因此，需要把传递的对象分解成系统可以识别的原始状态（数据），并将它们跨进程序列化marshalling。由于marshalling过程繁琐，因此android通过AIDL处理。
+
+注意：只有当我们允许不同应用程序的客户端获取service来进行IPC，并且在service中需要处理多线程时，AIDL才是必须的。绝大多数应用程序都不应该用AIDL来创建Bound Service，因为这可能需要多线程处理能力并且会让代码变得更为复杂。因此，AIDL对绝大多数应用程序都不适用。如果只是在应用程序内部使用，并且不需要跨进程，我们可以通过继承Binder类直接进行交互，这种是最常见的方式。若跨进程IPC且不需要处理多线程问题可以通过使用Messenger方法，因为Messenger把所有请求都放在一个线程中，因此不必担心线程安全问题。
+
+（下面的理解上还有些问题）在开始设计AIDL接口之前，需要注意的是调用AIDL接口是直接的调用方法，我们不应该假设调用方法发生在子线程。从本地进程和远程进程中的线程调用是不同的：
+
+- 在本地进程中调用。若在主线程中调用，则AIDL接口会在主线程中执行。若是另外的子线程，则该线程执行service中的代码。因此 若只有本地线程获取service，我们能够完全控制。这种情况不应该使用AIDL，而是继承Binder实现。
+- 若是远程进程调用，则AIDL的实现必须要保证完全地线程安全。这是因为若是支持远程调用的话可能需要同时处理多个调用（并发处理）。
+- 单向改变远程调用行为。当使用这种方式时，远程调用不会阻塞；它简单的发送数据，并立刻返回。最终，接口实现接收向常规的通过Binder线程池调用一样处理远程调用。若单向用在本地调用，则不会影响并且调用仍是异步的。
+
+*上述内容理解有的问题，须再查阅资料并验证*，同时请各位不吝赐教。
+
+#定义AIDL接口
+
+AIDL接口必须定义在`.aidl`文件中（命名满足java语法），并同时保存在service所在的应用程序和其它绑定该service的应用程序（需要通过AIDL进行IPC的service）中，保存位置为源代码中`src/`目录下。
+
+当我们新建一个`.aidl`文件时，android SDK工具就会根据该文件自动生成一个IBinder接口，并且保存在`gen/`目录下。service必须实现IBinder接口，客户端才能绑定service并调用方法获得该对象进行IPC。
+
+上面的目录是在eclipse中的，在android studio中则在：
+
+
+为了能够创建使用AIDL的service，必须要实现以下步骤：
+
+1. 创建`.aidl`文件
+    该文件定义了带有方法声明的编程接口
+2. 实现接口
+    android SDK工具使用java生成一个接口，依据是根据`.aidl`文件。这个接口中有一个内部抽象类Stub，该类继承了Binder类，并且实现了AIDL接口中的方法，我们必须继承Stub类和实现其方法。
+3. 将接口暴露给客户端
+    实现Service类，覆盖`onBind()`方法，并且返回Stub的实现。
+
+注意：在我们第一次发布之后的改变AIDL接口都要保证对原来的版本的兼容性，避免其它应用无法访问我们的service（其它客户端可能拷贝的还是原来的接口版本）。
+
+下面详细介绍以上几步：
+
+##1. 创建`.aidl`文件
+
+AIDL需要满足一些简单的语法：能够使我们声明一个接口，该接口可以包含一个或多个方法，且能够带有参数和返回值。参数和返回值可以是任何类型的甚至是其它AIDL生成的接口。
+
+每个`.aidl`文件必须定义一个接口，并且只需要接口声明和方法声明。
+
+默认情况下，AIDL支持以下数据类型：
+
+- java中八大基本数据类型
+- String
+- CharSequence
+- List
+    当然，List中的类型也需要是AIDL支持的类型。通常使用List声明变量，而具体的类型（例如ArrayList）在定义时确定。
+- Map
+    和List用法一样。
+
+若是使用上述以外的类型（例如自定义类）必须导入相关声明，即使在同一个包中定义的。
+
+在定义AIDL接口时，需要注意以下几点：
+
+- 方法可以带有0个或多个参数，可以选择有无返回值。
+- 所有的非基本数据类型都需要指定一个方向来标记数据的流向（进，出，进出同时）。基本数据类型默认是进，且不能改变。我们有必要限制数据方向（真正需要的方向），原因在于marshalling参数的代价消耗大。
+- 文件中的所有代码注释都被包含在生成的IBinder接口中，除非是import和package之前注释的。
+- 只支持方法，不支持静态成员变量。且方法不能有修饰符。
+- 需要手动输入包名（android studio不需要手动）
+
+下面有一个例子：
+
+```java
+
+package com.sywyg.servicetest;
+
+import com.sywyg.servicetest.Man;
+// Declare any non-default types here with import statements
+// 需要导入自定义类型的位置
+interface IRemoteService{
+   /** Request the process ID of this service, to do evil things with it. */
+    int getPid();
+
+    /** Demonstrates some basic types that you can use as parameters
+     * and return values in AIDL.
+     */
+    void basicTypes(int anInt, long aLong, boolean aBoolean, float aFloat,
+              double aDouble, String aString);
+     // Man getMan();
+}
+
+
+```
+
+然后系统就会自动生成一个IRemoteService.java（对应IRemoteService.aidl）文件。
+有的编译器是立刻生成，有的则在编译应用程序时生成，这点注意。
+
+##2. 实现接口
+
+自动生成文件包含一个子类Stub，是父类接口的一个抽象实现，实现了`.aidl`文件中的所有方法。Stub同时定义了一些其他有用的方法，尤其是`asInterface()`方法，该方法接收一个IBinder对象，返回Stub接口的实现。
+
+*关于Stub后续有详细的介绍，这里只介绍一下如何使用。*
+
+下面用一个匿名类实现简单的接口实例：
+
+```java
+    /**
+     * 定义一个匿名内部类实现aidl接口，需要继承IRemoteService.Stub类
+     * 在.aidl文件中声明的方法需要在这里实现具体功能
+     */
+    private final IRemoteService.Stub mBinder = new IRemoteService.Stub() {
+        public int getPid(){
+            Log.d(TAG,"getPid is executed ...");
+            return android.os.Process.myPid();
+        }
+        public void basicTypes(int anInt, long aLong, boolean aBoolean,
+                                   float aFloat, double aDouble, String aString) {
+            Log.d(TAG,"basicTypes is executed ...");
+        }
+    };
+
+```
+
+Stub实现了Binder类（定义了远程过程调用协议Remote Procedure Call Protocol RPC），因此mBinder可以传输给客户端。
+
+在实现AIDL时需要注意一下几点：
+
+- 调用不能保证在主线程中执行，我们应该考虑多线程问题，并保证service是线程安全的。
+- 默认情况，RPC调用是异步的。若service需要长时间的操作要保证调用不能发生在主线程中，因为这个可能出现应用程序无法响应问题Application Not Responding ANR。因此我们应该保证调用发生在另外的子线程中。
+- 不会给调用者抛出异常。
+
+##3. 将接口暴露给客户端
+为service实现了AIDL接口，我们应该把接口暴露给客户端，使得他们能够绑定它。下面给出完整的代码，说明如何实现：
+
+```java
+
+/**
+ * 通过AIDL实现IPC
+ * @author sywyg
+ * @since 2015.7.16
+ */
+public class AIDLService extends Service {
+    private final String TAG = "result";
+    public AIDLService() {
+    }
+
+    /**
+     * 定义一个匿名内部类实现aidl接口，需要继承IRemoteService.Stub类
+     * 在.aidl文件中声明的方法需要在这里实现具体功能
+     */
+    private final IRemoteService.Stub mBinder = new IRemoteService.Stub() {
+        public int getPid(){
+            Log.d(TAG,"getPid is executed ...");
+            return android.os.Process.myPid();
+        }
+        public void basicTypes(int anInt, long aLong, boolean aBoolean,
+                                   float aFloat, double aDouble, String aString) {
+            Log.d(TAG,"basicTypes is executed ...");
+        }
+    };
+
+    @Override
+    public IBinder onBind(Intent intent) {
+
+        return mBinder;
+    }
+}
+
+```
+
+那么，当客户端调用`bindService()`连接service时，客户端回调`onServiceConnected()`方法接收mBinder实例(service的`onBinder()`方法返回的)。
+
+客户端必须也能够获得该接口类，因此当客户端和service在不同的应用程序时，客户端应用程序必须复制一份`.aidl`文件，这样才能获得AIDL中的方法。
+
+当客户在`onServiceConnected()`方法中接收IBinder对象时，必须通过调用`YourServiceInterface.Stub.asInterface(service)`转换为YourServiceInterface类型。如下：
+
+```java
+
+IRemoteService mIRemoteService;
+  private ServiceConnection mConnection = new ServiceConnection() {
+        @Override
+        public void onServiceConnected(ComponentName name, IBinder service) {
+            Log.d(TAG,"绑定成功");
+            // Following the example above for an AIDL interface,
+            // this gets an instance of the IRemoteService, which we can use to call on the service
+            // 还是接着上面的例子，通过这种方式获得IRemoteService的一个实例，
+            // 这样，我们可以在客户端进行处理了。
+            mIRemoteService = IRemoteService.Stub.asInterface(service);
+
+            mBound = true;
+        }
+
+        @Override
+        public void onServiceDisconnected(ComponentName name) {
+            mBound = false;
+        }
+    };
+
+```
+
+
+#通过IPC传递对象
+
+我们可以实现通过IPC把对象从一个进程传递到另一个进程中。但是，我们必须要确保在另一个进程中可以获得该对象（即需要该类的代码），并且该类需要支持Parcelable接口。必须要支持Parcelable，这样系统才能将对象分解为基本数据类型（能够跨进程marshalled）。
+
+注意：Parcelable是一个接口，实现该接口的类实例能够保存在Parcel中并从中恢复。该类中必须有一个名叫CREATOR的静态成员变量，该成员是Parcelable.Creator的一个实现实例。
+
+为了创建支持Parcelable协议的类，必须完成以下几点：
+
+1. 该类必须实现Parcelable接口；
+2. 实现`writeToParcel()和`方法，记录当前对象的状态（成员变量等），并用Parcel保存。还要实现`describeContents()`，一般返回0；
+3. 添加静态成员变量CREAROR，该成员是Parcelable.Creator的一个实现实例；
+4. 最后创建一个`.aidl`文件声明该parcelable类（例如下面的Rect.aidl文件）。若你正在进行自定义生成过程，不要添加`.aidl`文件，这是因为，它类似C语言的头文件，不会进行编译的。？？？茫然
+
+AIDL通过上述办法产生marshall和unmarshall对象。
+
+
+
+下面是一个实现Parcelable接口的类Rect，首先要有Rect.aidl文件：
+
+```
+
+package android.graphics;
+
+// Declare Rect so AIDL can find it and knows that it implements
+// the parcelable protocol.
+// 声明Rect，AIDL好找到并确认它实现了parcelable协议
+parcelable Rect;
+
+```
+
+下面是Rect类：
+
+```java
+
+import android.os.Parcel;
+import android.os.Parcelable;
+
+public final class Rect implements Parcelable {
+    public int left;
+    public int top;
+    public int right;
+    public int bottom;
+
+    public static final Parcelable.Creator<Rect> CREATOR = new
+Parcelable.Creator<Rect>() {
+        public Rect createFromParcel(Parcel in) {
+            return new Rect(in);
+        }
+
+        public Rect[] newArray(int size) {
+            return new Rect[size];
+        }
+    };
+
+    public Rect() {
+    }
+
+    private Rect(Parcel in) {
+        readFromParcel(in);
+    }
+
+    public void writeToParcel(Parcel out) {
+        out.writeInt(left);
+        out.writeInt(top);
+        out.writeInt(right);
+        out.writeInt(bottom);
+    }
+
+    public void readFromParcel(Parcel in) {
+        left = in.readInt();
+        top = in.readInt();
+        right = in.readInt();
+        bottom = in.readInt();
+    }
+}
+
+```
+
+Parcel同样可以写其它类型的数据。
+
+警告：不要忘记从另一个进程中获取数据时的安全问题。上面的例子，Rect获取四个数，但是这取决于你获得多少数据（读写顺序要一致）。
+
+#调用IPC方法
+
+客户端必须完成以下步骤才能实现调用远程接口：
+
+1. 在项目中包含`.aidl`文件。
+2. 声明一个IBinder对象实例（基于AIDL产生的）。
+3. 实现ServiceConnection。
+4. 调用`Context.bindService()`，并传递ServiceConnection的实现。
+5. 在`onServiceConnected()`实现中，我们可以接受IBinder的一个实例（名为service)。调用`asInterface()`转换成接口实例。
+6. 调用在接口中定义的方法。必须要捕获DeadObjectionException异常（当连接断开时），这是调用远程方法的唯一异常。
+7. 调用`Context.unBindService()`解除连接。
+
+调用IPC service注意事项：
+
+- 对象是跨进程计数的引用类型，上一章讲的一样，可能会造成内存泄漏。
+- 能够发送匿名对象作为方法参数。
